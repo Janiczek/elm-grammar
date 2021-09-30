@@ -2,6 +2,7 @@ module Grammar exposing (Error(..), Parser, Structure(..), parser)
 
 import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
 import Grammar.Parser
+import Parser
 
 
 type Structure
@@ -9,9 +10,11 @@ type Structure
     | Node String (List Structure)
 
 
+{-| TODO get rid of the DeadEnds and use our custom errors
+-}
 type Error
-    = GrammarProblem String
-    | PartialMatch { unmatched : { row : Int, column : Int } }
+    = GrammarProblem (List Parser.DeadEnd)
+    | ParseProblem (List Parser.DeadEnd)
 
 
 type alias Parser =
@@ -20,14 +23,17 @@ type alias Parser =
 
 parser : String -> Result Error Parser
 parser grammarString =
-    case Grammar.Parser.parse grammarString of
-        Err deadEnds ->
-            Err (GrammarProblem (Debug.toString deadEnds))
-
-        Ok grammar ->
-            Ok (runGrammar grammar)
+    Grammar.Parser.parse grammarString
+        |> Result.mapError GrammarProblem
+        |> Result.map runGrammar
 
 
 runGrammar : Grammar -> String -> Result Error Structure
 runGrammar grammar input =
-    Debug.todo "Grammar.runGrammar"
+    Parser.run (parserFromGrammar grammar) input
+        |> Result.mapError ParseProblem
+
+
+parserFromGrammar : Grammar -> Parser.Parser Structure
+parserFromGrammar grammar =
+    Debug.todo "Grammar.parserFromGrammar"

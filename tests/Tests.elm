@@ -26,7 +26,7 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (\parser -> parser "sausage")
-                    |> Expect.equal (Err (PartialMatch { unmatched = { row = 1, column = 1 } }))
+                    |> Expect.equal (Err (ParseProblem []))
         , Test.test "two literals - first OK" <|
             \() ->
                 Grammar.parser

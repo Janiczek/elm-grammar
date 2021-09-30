@@ -37,7 +37,7 @@ rule =
         |. Parser.spaces
         |= Parser.sequence
             { start = ""
-            , separator = " "
+            , separator = ""
             , end = ""
             , spaces = spacesOnly
             , item = chunk
