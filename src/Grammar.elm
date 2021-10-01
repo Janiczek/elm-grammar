@@ -2,7 +2,9 @@ module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, r
 
 import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
 import Grammar.Parser
+import NonemptyList
 import Parser exposing ((|.), (|=))
+import Parser.Extra as Parser
 
 
 type Structure
@@ -60,6 +62,13 @@ runGrammar grammar input =
 
 toElmParser : Grammar -> Parser.Parser Structure
 toElmParser grammar =
-    Parser.oneOf
-        [ Debug.todo "Grammar.toElmParser"
-        ]
+    grammar
+        |> List.map ruleParser
+        |> Parser.oneOf
+
+
+ruleParser : Rule -> Parser.Parser Structure
+ruleParser rule =
+    rule.sequence
+        |> NonemptyList.foldl (\chunk acc -> acc) Nothing
+        |> Parser.fromMaybe "For some reason unsuccessful"

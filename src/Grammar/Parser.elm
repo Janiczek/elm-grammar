@@ -1,7 +1,9 @@
 module Grammar.Parser exposing (parse)
 
 import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
+import NonemptyList
 import Parser exposing ((|.), (|=), Parser)
+import Parser.Extra as Parser
 import Set
 
 
@@ -35,14 +37,16 @@ rule =
         |. Parser.spaces
         |. Parser.symbol "->"
         |. Parser.spaces
-        |= Parser.sequence
-            { start = ""
-            , separator = ""
-            , end = ""
-            , spaces = spacesOnly
-            , item = chunk
-            , trailing = Parser.Optional
-            }
+        |= (Parser.sequence
+                { start = ""
+                , separator = ""
+                , end = ""
+                , spaces = spacesOnly
+                , item = chunk
+                , trailing = Parser.Optional
+                }
+                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
+           )
 
 
 chunk : Parser Chunk

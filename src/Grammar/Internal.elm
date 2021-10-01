@@ -1,5 +1,7 @@
 module Grammar.Internal exposing (Chunk(..), Grammar, Rule)
 
+import NonemptyList exposing (NonemptyList)
+
 
 type alias Grammar =
     List Rule
@@ -7,7 +9,7 @@ type alias Grammar =
 
 type alias Rule =
     { tag : String
-    , sequence : List Chunk
+    , sequence : NonemptyList Chunk
     }
 
 

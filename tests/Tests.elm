@@ -101,7 +101,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             [ { tag = "bread"
-                              , sequence = [ Literal "toast" ]
+                              , sequence = ( Literal "toast", [] )
                               }
                             ]
                         )
@@ -115,10 +115,10 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             [ { tag = "bread"
-                              , sequence = [ Literal "toast" ]
+                              , sequence = ( Literal "toast", [] )
                               }
                             , { tag = "bread"
-                              , sequence = [ Literal "bagel" ]
+                              , sequence = ( Literal "bagel", [] )
                               }
                             ]
                         )
@@ -132,10 +132,10 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             [ { tag = "bread"
-                              , sequence = [ Literal "toast" ]
+                              , sequence = ( Literal "toast", [] )
                               }
                             , { tag = "breakfast"
-                              , sequence = [ Tag "bread" ]
+                              , sequence = ( Tag "bread", [] )
                               }
                             ]
                         )
@@ -149,13 +149,13 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             [ { tag = "bread"
-                              , sequence = [ Literal "toast" ]
+                              , sequence = ( Literal "toast", [] )
                               }
                             , { tag = "breakfast"
                               , sequence =
-                                    [ Literal "breakfast"
-                                    , Tag "bread"
-                                    ]
+                                    ( Literal "breakfast"
+                                    , [ Tag "bread" ]
+                                    )
                               }
                             ]
                         )
