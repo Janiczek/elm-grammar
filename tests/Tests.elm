@@ -268,6 +268,31 @@ usage =
                             "a"
                         )
                     |> Expect.equal (Ok (Node "a" [ Terminal "a" ]))
+        , Test.test "lookahead: fails" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> &"ab" ("a" | "b")+
+                    """
+                    |> Result.andThen (runOn "aabb")
+                    |> Expect.err
+        , Test.test "lookahead: succeeds" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> &"ab" ("a" | "b")+
+                    """
+                    |> Result.andThen (runOn "abab")
+                    |> Expect.equal
+                        (Ok
+                            (Node "s"
+                                [ Terminal "a"
+                                , Terminal "b"
+                                , Terminal "a"
+                                , Terminal "b"
+                                ]
+                            )
+                        )
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
@@ -548,6 +573,44 @@ grammarParsing =
                         (Ok
                             { start = "s"
                             , rules = Dict.fromList [ ( "s", ( Optional (Literal "a"), [] ) ) ]
+                            }
+                        )
+        , Test.test "lookahead" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    s -> &"ab"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules = Dict.fromList [ ( "s", ( Lookahead (Literal "ab"), [] ) ) ]
+                            }
+                        )
+        , Test.test "lookahead 2" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    s -> &"ab" ("a" | "b")+
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Concatenation
+                                            (Lookahead (Literal "ab"))
+                                            (OneOrMore
+                                                (Alternation
+                                                    (Literal "a")
+                                                    (Literal "b")
+                                                )
+                                            )
+                                        , []
+                                        )
+                                      )
+                                    ]
                             }
                         )
         ]

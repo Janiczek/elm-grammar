@@ -43,6 +43,8 @@ type Problem
     | ExpectingAsterisk
     | ExpectingQuestionMark
     | ExpectingEndOfString
+    | ExpectingAmpersand
+    | ExpectingLookahead
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -93,15 +95,16 @@ strategy =
         { oneOf =
             [ hidden
             , grouped
+            , Pratt.prefix 3 (Parser.token (Parser.Token "&" ExpectingAmpersand)) Lookahead
             , Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
             , Pratt.infixLeft 2 spacesOnly Concatenation
-            , Pratt.postfix 3 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
-            , Pratt.postfix 4 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
-            , Pratt.postfix 5 (Parser.token (Parser.Token "?" ExpectingQuestionMark)) Optional
+            , Pratt.postfix 4 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
+            , Pratt.postfix 5 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
+            , Pratt.postfix 6 (Parser.token (Parser.Token "?" ExpectingQuestionMark)) Optional
             ]
         , spaces = spacesOnly
         }

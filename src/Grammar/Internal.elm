@@ -10,7 +10,20 @@ type alias Grammar =
     }
 
 
-{-| TODO:
+{-| Implemented:
+
+     - Literal:       s -> "a"
+     - Tag:           s -> a
+     - Concatenation: s -> a b
+     - Alternation:   s -> a | b
+     - Grouping:      s -> (a)
+     - Hiding:        s -> <a>
+     - Optional:      s -> a?
+     - Zero or more:  s -> a*
+     - One or more:   s -> a+
+     - Lookahead:     s -> &a
+
+TODO:
 
      - Regex:         s  -> /"[^"]*"/
      - Comment:       s  -> (* hello *) "world"
@@ -26,3 +39,4 @@ type Strategy
     | OneOrMore Strategy
     | ZeroOrMore Strategy
     | Optional Strategy
+    | Lookahead Strategy

@@ -111,15 +111,19 @@ toElmParser config grammar =
 
 strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Grammar.Parser.Parser (List Structure)
 strategyParser rules strategy =
+    let
+        strategyParser_ s =
+            Parser.lazy (\() -> strategyParser rules s)
+    in
     case strategy of
         Concatenation s1 s2 ->
             Parser.succeed (++)
-                |= Parser.lazy (\() -> strategyParser rules s1)
-                |= Parser.lazy (\() -> strategyParser rules s2)
+                |= strategyParser_ s1
+                |= strategyParser_ s2
 
         Alternation s1 s2 ->
             [ s1, s2 ]
-                |> List.map (\s -> Parser.lazy (\() -> strategyParser rules s))
+                |> List.map strategyParser_
                 |> Parser.oneOf
 
         Literal literal ->
@@ -134,24 +138,40 @@ strategyParser rules strategy =
                 Just strategies ->
                     strategies
                         |> NonemptyList.toList
-                        |> List.map (\s -> Parser.lazy (\() -> strategyParser rules s))
+                        |> List.map strategyParser_
                         |> Parser.oneOf
                         |> Parser.map (\strategies_ -> [ Node tag strategies_ ])
 
         Hidden s ->
             Parser.succeed []
-                |. Parser.lazy (\() -> strategyParser rules s)
+                |. strategyParser_ s
 
         OneOrMore s ->
             Parser.succeed (NonemptyList.toList >> List.fastConcat)
-                |= Parser.some (Parser.lazy (\() -> strategyParser rules s))
+                |= Parser.some (strategyParser_ s)
 
         ZeroOrMore s ->
             Parser.succeed List.fastConcat
-                |= Parser.many (Parser.lazy (\() -> strategyParser rules s))
+                |= Parser.many (strategyParser_ s)
 
         Optional s ->
             Parser.oneOf
-                [ Parser.lazy (\() -> strategyParser rules s)
+                [ strategyParser_ s
                 , Parser.succeed []
                 ]
+
+        Lookahead s ->
+            Parser.succeed []
+                |. (Parser.succeed String.dropLeft
+                        |= Parser.getOffset
+                        |= Parser.getSource
+                        |> Parser.andThen
+                            (\restOfInput ->
+                                case Parser.run (strategyParser_ s) restOfInput of
+                                    Err _ ->
+                                        Parser.problem ExpectingLookahead
+
+                                    Ok _ ->
+                                        Parser.succeed ()
+                            )
+                   )
