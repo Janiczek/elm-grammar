@@ -1,4 +1,4 @@
-module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, runOn)
+module Grammar exposing (Config, Error(..), Parser, Structure(..), defaultConfig, never, parser, run, runWith)
 
 import Dict exposing (Dict)
 import Grammar.Internal exposing (Grammar, Strategy(..))
@@ -23,22 +23,33 @@ type Error
 
 
 type Parser
-    = Parser (String -> Result Error Structure)
+    = Parser (Config -> String -> Result Error Structure)
+
+
+type alias Config =
+    { partial : Bool
+    }
+
+
+defaultConfig : Config
+defaultConfig =
+    { partial = False
+    }
 
 
 run : Parser -> String -> Result Error Structure
-run (Parser parser_) input =
-    parser_ input
+run parser_ input =
+    runWith defaultConfig parser_ input
 
 
-runOn : String -> Parser -> Result Error Structure
-runOn input parser_ =
-    run parser_ input
+runWith : Config -> Parser -> String -> Result Error Structure
+runWith config (Parser parser_) input =
+    parser_ config input
 
 
 never : Parser
 never =
-    Parser (\_ -> Err NeverParserUsed)
+    Parser (\_ _ -> Err NeverParserUsed)
 
 
 parser : String -> Result Error Parser
@@ -48,8 +59,8 @@ parser grammarString =
         |> Result.map (\grammar -> Parser (runGrammar grammar))
 
 
-runGrammar : Grammar -> String -> Result Error Structure
-runGrammar grammar input =
+runGrammar : Grammar -> Config -> String -> Result Error Structure
+runGrammar grammar config input =
     {- This is the moment we decide to go the recursive descent path:
        converting the grammar to an `elm/parser` parser.
 
@@ -58,7 +69,20 @@ runGrammar grammar input =
        Mark Engelberg says that for left recursion he needed the GLL parsing
        algorithm and async/dataflow approach.
     -}
-    Parser.run (toElmParser grammar) input
+    let
+        parserFromGrammar =
+            toElmParser grammar
+
+        finalParser =
+            if config.partial then
+                parserFromGrammar
+
+            else
+                Parser.succeed identity
+                    |= parserFromGrammar
+                    |. Parser.end ExpectingEndOfString
+    in
+    Parser.run finalParser input
         |> Result.mapError ParseProblem
 
 
@@ -116,3 +140,9 @@ strategyParser rules strategy =
         ZeroOrMore s ->
             Parser.succeed List.fastConcat
                 |= Parser.many (Parser.lazy (\() -> strategyParser rules s))
+
+        Optional s ->
+            Parser.oneOf
+                [ Parser.lazy (\() -> strategyParser rules s)
+                , Parser.succeed []
+                ]

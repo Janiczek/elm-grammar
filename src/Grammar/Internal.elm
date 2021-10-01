@@ -12,8 +12,6 @@ type alias Grammar =
 
 {-| TODO:
 
-     - Optional:      s  -> a?
-     - Zero or more:  s  -> a*
      - Regex:         s  -> /"[^"]*"/
      - Comment:       s  -> (* hello *) "world"
      - Hiding tags:  <s> -> "abc"
@@ -27,3 +25,4 @@ type Strategy
     | Hidden Strategy
     | OneOrMore Strategy
     | ZeroOrMore Strategy
+    | Optional Strategy

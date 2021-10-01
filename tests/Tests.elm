@@ -2,7 +2,7 @@ module Tests exposing (grammarParsing, usage)
 
 import Dict
 import Expect
-import Grammar exposing (Error(..), Structure(..))
+import Grammar exposing (Config, Error(..), Parser, Structure(..))
 import Grammar.Internal exposing (Strategy(..))
 import Grammar.Parser exposing (Problem(..))
 import Parser exposing (Problem(..))
@@ -11,6 +11,15 @@ import Test exposing (Test)
 
 usage : Test
 usage =
+    let
+        runOn : String -> Parser -> Result Error Structure
+        runOn input parser =
+            Grammar.run parser input
+
+        runWithOn : Config -> String -> Parser -> Result Error Structure
+        runWithOn config input parser =
+            Grammar.runWith config parser input
+    in
     Test.describe "Grammar.parser usage"
         [ Test.test "literal Ok example" <|
             \() ->
@@ -18,7 +27,7 @@ usage =
                     """
                     bread -> "toast"
                     """
-                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Result.andThen (runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "literal Err example" <|
             \() ->
@@ -26,7 +35,7 @@ usage =
                     """
                     bread -> "toast"
                     """
-                    |> Result.andThen (Grammar.runOn "sausage")
+                    |> Result.andThen (runOn "sausage")
                     |> Expect.equal
                         (Err
                             (ParseProblem
@@ -45,7 +54,7 @@ usage =
                     bread -> "toast"
                     bread -> "bagel"
                     """
-                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Result.andThen (runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "two literals - second OK" <|
             \() ->
@@ -54,7 +63,7 @@ usage =
                     bread -> "toast"
                     bread -> "bagel"
                     """
-                    |> Result.andThen (Grammar.runOn "bagel")
+                    |> Result.andThen (runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         , Test.test "tag is used if first" <|
             \() ->
@@ -63,7 +72,7 @@ usage =
                     breakfast -> bread
                     bread -> "toast"
                     """
-                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Result.andThen (runOn "toast")
                     |> Expect.equal (Ok (Node "breakfast" [ Node "bread" [ Terminal "toast" ] ]))
         , Test.test "tag is not used if second" <|
             \() ->
@@ -72,7 +81,7 @@ usage =
                     bread -> "toast"
                     breakfast -> bread
                     """
-                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Result.andThen (runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "concatenation" <|
             \() ->
@@ -81,7 +90,7 @@ usage =
                     breakfast -> "breakfast: " bread
                     bread -> "toast"
                     """
-                    |> Result.andThen (Grammar.runOn "breakfast: toast")
+                    |> Result.andThen (runOn "breakfast: toast")
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
@@ -96,7 +105,7 @@ usage =
                     """
                     bread -> "toast" | "bagel"
                     """
-                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Result.andThen (runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "alternation: second OK" <|
             \() ->
@@ -104,7 +113,7 @@ usage =
                     """
                     bread -> "toast" | "bagel"
                     """
-                    |> Result.andThen (Grammar.runOn "bagel")
+                    |> Result.andThen (runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         , Test.test "hidden: doesn't show up" <|
             \() ->
@@ -112,7 +121,7 @@ usage =
                     """
                     bread -> "toast" | <"yummy "> "bagel"
                     """
-                    |> Result.andThen (Grammar.runOn "yummy bagel")
+                    |> Result.andThen (runOn "yummy bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         , Test.test "grouping: 'ac' is OK" <|
             \() ->
@@ -120,7 +129,7 @@ usage =
                     """
                     s -> ("a" | "b") "c"
                     """
-                    |> Result.andThen (Grammar.runOn "ac")
+                    |> Result.andThen (runOn "ac")
                     |> Expect.equal
                         (Ok
                             (Node "s"
@@ -135,7 +144,7 @@ usage =
                     """
                     s -> ("a" | "b") "c"
                     """
-                    |> Result.andThen (Grammar.runOn "bc")
+                    |> Result.andThen (runOn "bc")
                     |> Expect.equal
                         (Ok
                             (Node "s"
@@ -150,7 +159,7 @@ usage =
                     """
                     s -> "a"+
                     """
-                    |> Result.andThen (Grammar.runOn "")
+                    |> Result.andThen (runOn "")
                     |> Expect.err
         , Test.test "one or more: one works" <|
             \() ->
@@ -158,7 +167,7 @@ usage =
                     """
                     s -> "a"+
                     """
-                    |> Result.andThen (Grammar.runOn "a")
+                    |> Result.andThen (runOn "a")
                     |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
         , Test.test "one or more: two work" <|
             \() ->
@@ -166,7 +175,7 @@ usage =
                     """
                     s -> "a"+
                     """
-                    |> Result.andThen (Grammar.runOn "aa")
+                    |> Result.andThen (runOn "aa")
                     |> Expect.equal
                         (Ok
                             (Node "s"
@@ -181,7 +190,7 @@ usage =
                     """
                     s -> "a"*
                     """
-                    |> Result.andThen (Grammar.runOn "")
+                    |> Result.andThen (runOn "")
                     |> Expect.equal (Ok (Node "s" []))
         , Test.test "zero or more: one works" <|
             \() ->
@@ -189,7 +198,7 @@ usage =
                     """
                     s -> "a"*
                     """
-                    |> Result.andThen (Grammar.runOn "a")
+                    |> Result.andThen (runOn "a")
                     |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
         , Test.test "zero or more: two work" <|
             \() ->
@@ -197,7 +206,7 @@ usage =
                     """
                     s -> "a"*
                     """
-                    |> Result.andThen (Grammar.runOn "aa")
+                    |> Result.andThen (runOn "aa")
                     |> Expect.equal
                         (Ok
                             (Node "s"
@@ -206,6 +215,38 @@ usage =
                                 ]
                             )
                         )
+        , Test.test "optional: zero works" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"?
+                    """
+                    |> Result.andThen (runOn "")
+                    |> Expect.equal (Ok (Node "s" []))
+        , Test.test "optional: one works" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"?
+                    """
+                    |> Result.andThen (runOn "a")
+                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+        , Test.test "optional: two don't work with default config (partial = False)" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"?
+                    """
+                    |> Result.andThen (runOn "aa")
+                    |> Expect.err
+        , Test.test "optional: two work with partial = True" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"?
+                    """
+                    |> Result.andThen (runWithOn { partial = True } "aa")
+                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
@@ -229,7 +270,7 @@ bread      -> "toast"
 bread      -> "biscuits" 
 bread      -> "English muffin" 
                     """
-                    |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
+                    |> Result.andThen (runOn "poached eggs with toast on the side")
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
@@ -269,7 +310,7 @@ bread      -> "toast"
 bread      -> "biscuits" 
 bread      -> "English muffin" 
                     """
-                    |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
+                    |> Result.andThen (runOn "poached eggs with toast on the side")
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
@@ -474,6 +515,18 @@ grammarParsing =
                         (Ok
                             { start = "s"
                             , rules = Dict.fromList [ ( "s", ( ZeroOrMore (Literal "a"), [] ) ) ]
+                            }
+                        )
+        , Test.test "optional" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    s -> "a"?
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules = Dict.fromList [ ( "s", ( Optional (Literal "a"), [] ) ) ]
                             }
                         )
         ]
