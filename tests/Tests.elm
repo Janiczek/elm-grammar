@@ -96,11 +96,10 @@ usage =
                     """
                     |> Result.andThen (Grammar.runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
-        , Test.skip <|
-            Test.test "Larger example from the book Crafting Interpreters" <|
-                \() ->
-                    Grammar.parser
-                        """
+        , Test.test "Larger example from the book Crafting Interpreters" <|
+            \() ->
+                Grammar.parser
+                    """
 breakfast  -> protein " with " breakfast " on the side" 
 breakfast  -> protein 
 breakfast  -> bread 
@@ -120,8 +119,8 @@ bread      -> "toast"
 bread      -> "biscuits" 
 bread      -> "English muffin" 
                     """
-                        |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
-                        |> Expect.equal (Ok (Node "todo" []))
+                    |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
+                    |> Expect.equal (Ok (Node "todo" []))
         ]
 
 
