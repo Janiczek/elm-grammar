@@ -17,6 +17,7 @@ type alias Parser a =
 type Context
     = InLiteral
     | InHidden
+    | InGrouped
     | InTag
     | InStrategy
     | InRule
@@ -32,6 +33,8 @@ type Problem
     | ExpectingClosingDoubleQuote
     | ExpectingLeftAngleBracket
     | ExpectingRightAngleBracket
+    | ExpectingLeftParenthesis
+    | ExpectingRightParenthesis
     | ExpectingPipe
     | ExpectingArrow
     | ExpectingNewline
@@ -85,6 +88,7 @@ strategy =
     Pratt.expression
         { oneOf =
             [ hidden
+            , grouped
             , Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
             ]
@@ -106,6 +110,17 @@ hidden config =
         |. spacesOnly
         |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         |> Parser.inContext InHidden
+
+
+grouped : Pratt.Config Context Problem Strategy -> Parser Strategy
+grouped config =
+    Parser.succeed identity
+        |. Parser.token (Parser.Token "(" ExpectingLeftParenthesis)
+        |. spacesOnly
+        |= Pratt.subExpression 0 config
+        |. spacesOnly
+        |. Parser.token (Parser.Token ")" ExpectingRightParenthesis)
+        |> Parser.inContext InGrouped
 
 
 literal : Parser String
@@ -167,10 +182,10 @@ rulesToGrammar rules =
                 |> List.sortBy Tuple.first
                 |> List.gatherEqualsBy Tuple.first
                 |> List.map
-                    (\( ( tag_, strategy1 ), grouped ) ->
+                    (\( ( tag_, strategy1 ), grouped_ ) ->
                         let
                             restOfStrategies =
-                                List.map Tuple.second grouped
+                                List.map Tuple.second grouped_
                         in
                         ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
                     )

@@ -12,7 +12,6 @@ type alias Grammar =
 
 {-| TODO:
 
-     - Grouping:      s  -> (a | b) c
      - Optional:      s  -> a?
      - One or more:   s  -> a+
      - Zero or more:  s  -> a*

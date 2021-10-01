@@ -114,6 +114,36 @@ usage =
                     """
                     |> Result.andThen (Grammar.runOn "yummy bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+        , Test.test "grouping: 'ac' is OK" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> ("a" | "b") "c"
+                    """
+                    |> Result.andThen (Grammar.runOn "ac")
+                    |> Expect.equal
+                        (Ok
+                            (Node "s"
+                                [ Terminal "a"
+                                , Terminal "c"
+                                ]
+                            )
+                        )
+        , Test.test "grouping: 'bc' is OK" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> ("a" | "b") "c"
+                    """
+                    |> Result.andThen (Grammar.runOn "bc")
+                    |> Expect.equal
+                        (Ok
+                            (Node "s"
+                                [ Terminal "b"
+                                , Terminal "c"
+                                ]
+                            )
+                        )
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
@@ -330,6 +360,30 @@ grammarParsing =
                                       , ( Concatenation
                                             (Hidden (Literal "crispy"))
                                             (Literal "toast")
+                                        , []
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "grouped" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    s -> ("a" | "b") "c"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Concatenation
+                                            (Alternation
+                                                (Literal "a")
+                                                (Literal "b")
+                                            )
+                                            (Literal "c")
                                         , []
                                         )
                                       )
