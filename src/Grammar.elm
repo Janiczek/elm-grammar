@@ -9,6 +9,11 @@ import Parser.Advanced as Parser exposing ((|.), (|=))
 import Parser.Extra as Parser
 
 
+
+-- TODO visualize (toDOT)
+-- TODO generate values
+
+
 type Structure
     = Terminal String
     | Node String (List Structure)
@@ -28,12 +33,14 @@ type Parser
 
 type alias Config =
     { partial : Bool
+    , start : Maybe String
     }
 
 
 defaultConfig : Config
 defaultConfig =
     { partial = False
+    , start = Nothing
     }
 
 
@@ -69,35 +76,37 @@ runGrammar grammar config input =
        Mark Engelberg says that for left recursion he needed the GLL parsing
        algorithm and async/dataflow approach.
     -}
-    let
-        parserFromGrammar =
-            toElmParser grammar
-
-        finalParser =
-            if config.partial then
-                parserFromGrammar
-
-            else
-                Parser.succeed identity
-                    |= parserFromGrammar
-                    |. Parser.end ExpectingEndOfString
-    in
-    Parser.run finalParser input
+    Parser.run
+        (toElmParser config grammar)
+        input
         |> Result.mapError ParseProblem
 
 
-toElmParser : Grammar -> Grammar.Parser.Parser Structure
-toElmParser { start, rules } =
-    case Dict.get start rules of
-        Nothing ->
-            Parser.problem (CouldntFindStartingRuleOnLeftSide start)
+toElmParser : Config -> Grammar -> Grammar.Parser.Parser Structure
+toElmParser config grammar =
+    let
+        realStart =
+            Maybe.withDefault grammar.start config.start
 
-        Just strategies ->
-            strategies
-                |> NonemptyList.toList
-                |> List.map (strategyParser rules)
-                |> Parser.oneOf
-                |> Parser.map (Node start)
+        parserFromGrammar =
+            case Dict.get realStart grammar.rules of
+                Nothing ->
+                    Parser.problem (CouldntFindStartingRuleOnLeftSide realStart)
+
+                Just strategies ->
+                    strategies
+                        |> NonemptyList.toList
+                        |> List.map (strategyParser grammar.rules)
+                        |> Parser.oneOf
+                        |> Parser.map (Node realStart)
+    in
+    if config.partial then
+        parserFromGrammar
+
+    else
+        Parser.succeed identity
+            |= parserFromGrammar
+            |. Parser.end ExpectingEndOfString
 
 
 strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Grammar.Parser.Parser (List Structure)

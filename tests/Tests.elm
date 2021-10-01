@@ -245,8 +245,29 @@ usage =
                     """
                     s -> "a"?
                     """
-                    |> Result.andThen (runWithOn { partial = True } "aa")
+                    |> Result.andThen
+                        (runWithOn
+                            { partial = True
+                            , start = Nothing
+                            }
+                            "aa"
+                        )
                     |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+        , Test.test "custom start" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> s
+                    a -> "a"
+                    """
+                    |> Result.andThen
+                        (runWithOn
+                            { partial = False
+                            , start = Just "a"
+                            }
+                            "a"
+                        )
+                    |> Expect.equal (Ok (Node "a" [ Terminal "a" ]))
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
