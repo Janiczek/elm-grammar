@@ -120,7 +120,22 @@ bread      -> "biscuits"
 bread      -> "English muffin" 
                     """
                     |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
-                    |> Expect.equal (Ok (Node "todo" []))
+                    |> Expect.equal
+                        (Ok
+                            (Node "breakfast"
+                                [ Node "protein"
+                                    [ Node "cooked" [ Terminal "poached" ]
+                                    , Terminal " eggs"
+                                    ]
+                                , Terminal " with "
+                                , Node "breakfast"
+                                    [ Node "bread"
+                                        [ Terminal "toast" ]
+                                    ]
+                                , Terminal " on the side"
+                                ]
+                            )
+                        )
         ]
 
 
