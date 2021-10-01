@@ -46,6 +46,14 @@ parser grammarString =
 
 runGrammar : Grammar -> String -> Result Error Structure
 runGrammar grammar input =
+    {- This is the moment we decide to go the recursive descent path:
+       converting the grammar to an `elm/parser` parser.
+
+       This might be a decision that locks us out of some functionality: in
+       the [Instaparse talk](https://www.youtube.com/watch?v=b2AUW6psVcE),
+       Mark Engelberg says that for left recursion he needed the GLL parsing
+       algorithm and async/dataflow approach.
+    -}
     Parser.run (toElmParser grammar) input
         |> Result.mapError ParseProblem
 
