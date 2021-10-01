@@ -40,6 +40,7 @@ type Problem
     | ExpectingNewline
     | ExpectingLiteral String
     | ExpectingPlusSign
+    | ExpectingAsterisk
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -97,6 +98,7 @@ strategy =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
             , Pratt.infixLeft 2 spacesOnly Concatenation
             , Pratt.postfix 3 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
+            , Pratt.postfix 4 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
             ]
         , spaces = spacesOnly
         }

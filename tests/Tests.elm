@@ -175,6 +175,37 @@ usage =
                                 ]
                             )
                         )
+        , Test.test "zero or more: zero works" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"*
+                    """
+                    |> Result.andThen (Grammar.runOn "")
+                    |> Expect.equal (Ok (Node "s" []))
+        , Test.test "zero or more: one works" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"*
+                    """
+                    |> Result.andThen (Grammar.runOn "a")
+                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+        , Test.test "zero or more: two work" <|
+            \() ->
+                Grammar.parser
+                    """
+                    s -> "a"*
+                    """
+                    |> Result.andThen (Grammar.runOn "aa")
+                    |> Expect.equal
+                        (Ok
+                            (Node "s"
+                                [ Terminal "a"
+                                , Terminal "a"
+                                ]
+                            )
+                        )
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
@@ -431,6 +462,18 @@ grammarParsing =
                         (Ok
                             { start = "s"
                             , rules = Dict.fromList [ ( "s", ( OneOrMore (Literal "a"), [] ) ) ]
+                            }
+                        )
+        , Test.test "zero or more" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    s -> "a"*
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules = Dict.fromList [ ( "s", ( ZeroOrMore (Literal "a"), [] ) ) ]
                             }
                         )
         ]

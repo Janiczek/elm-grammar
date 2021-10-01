@@ -26,3 +26,4 @@ type Strategy
     | Tag String
     | Hidden Strategy
     | OneOrMore Strategy
+    | ZeroOrMore Strategy

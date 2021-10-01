@@ -112,3 +112,7 @@ strategyParser rules strategy =
         OneOrMore s ->
             Parser.succeed (NonemptyList.toList >> List.fastConcat)
                 |= Parser.some (Parser.lazy (\() -> strategyParser rules s))
+
+        ZeroOrMore s ->
+            Parser.succeed List.fastConcat
+                |= Parser.many (Parser.lazy (\() -> strategyParser rules s))
