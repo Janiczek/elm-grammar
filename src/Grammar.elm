@@ -80,12 +80,12 @@ strategyParser rules strategy =
     case strategy of
         Concatenation s1 s2 ->
             Parser.succeed (++)
-                |= strategyParser rules s1
-                |= strategyParser rules s2
+                |= Parser.lazy (\() -> strategyParser rules s1)
+                |= Parser.lazy (\() -> strategyParser rules s2)
 
         Alternation s1 s2 ->
             [ s1, s2 ]
-                |> List.map (strategyParser rules)
+                |> List.map (\s -> Parser.lazy (\() -> strategyParser rules s))
                 |> Parser.oneOf
 
         Literal literal ->
@@ -100,6 +100,6 @@ strategyParser rules strategy =
                 Just strategies ->
                     strategies
                         |> NonemptyList.toList
-                        |> List.map (strategyParser rules)
+                        |> List.map (\s -> Parser.lazy (\() -> strategyParser rules s))
                         |> Parser.oneOf
                         |> Parser.map (\strategies_ -> [ Node tag strategies_ ])
