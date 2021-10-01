@@ -17,18 +17,17 @@ parse string =
 
 parser : Parser Grammar
 parser =
-    Parser.map (Debug.log "x") <|
-        Parser.succeed rulesToGrammar
-            |= (Parser.sequence
-                    { start = ""
-                    , separator = "\n"
-                    , end = ""
-                    , spaces = spacesOnly
-                    , item = rule
-                    , trailing = Parser.Optional
-                    }
-                    |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
-               )
+    Parser.succeed rulesToGrammar
+        |= (Parser.sequence
+                { start = ""
+                , separator = "\n"
+                , end = ""
+                , spaces = spacesOnly
+                , item = rule
+                , trailing = Parser.Optional
+                }
+                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
+           )
 
 
 spacesOnly : Parser ()
