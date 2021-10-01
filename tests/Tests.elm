@@ -96,6 +96,32 @@ usage =
                     """
                     |> Result.andThen (Grammar.runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+        , Test.skip <|
+            Test.test "Larger example from the book Crafting Interpreters" <|
+                \() ->
+                    Grammar.parser
+                        """
+breakfast  -> protein " with " breakfast " on the side" 
+breakfast  -> protein 
+breakfast  -> bread 
+
+protein    -> crispiness " crispy bacon" 
+protein    -> "sausage" 
+protein    -> cooked " eggs" 
+
+crispiness -> "really" 
+crispiness -> "really " crispiness 
+
+cooked     -> "scrambled" 
+cooked     -> "poached" 
+cooked     -> "fried" 
+
+bread      -> "toast" 
+bread      -> "biscuits" 
+bread      -> "English muffin" 
+                    """
+                        |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
+                        |> Expect.equal (Ok (Node "todo" []))
         ]
 
 
@@ -171,7 +197,13 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread", ( Literal "toast", [] ) )
-                                    , ( "breakfast", ( Concatenation (Literal "breakfast") (Tag "bread"), [] ) )
+                                    , ( "breakfast"
+                                      , ( Concatenation
+                                            (Literal "breakfast")
+                                            (Tag "bread")
+                                        , []
+                                        )
+                                      )
                                     ]
                             }
                         )
@@ -186,7 +218,37 @@ grammarParsing =
                             { start = "bread"
                             , rules =
                                 Dict.fromList
-                                    [ ( "bread", ( Alternation (Literal "toast") (Literal "bagel"), [] ) )
+                                    [ ( "bread"
+                                      , ( Alternation
+                                            (Literal "toast")
+                                            (Literal "bagel")
+                                        , []
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "concatenation and alternation are grouped correctly" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    bread -> "crispy" "toast" | "bagel"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread"
+                                      , ( Alternation
+                                            (Concatenation
+                                                (Literal "crispy")
+                                                (Literal "toast")
+                                            )
+                                            (Literal "bagel")
+                                        , []
+                                        )
+                                      )
                                     ]
                             }
                         )

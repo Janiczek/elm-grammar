@@ -17,17 +17,18 @@ parse string =
 
 parser : Parser Grammar
 parser =
-    Parser.succeed rulesToGrammar
-        |= (Parser.sequence
-                { start = ""
-                , separator = "\n"
-                , end = ""
-                , spaces = spacesOnly
-                , item = rule
-                , trailing = Parser.Optional
-                }
-                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
-           )
+    Parser.map (Debug.log "x") <|
+        Parser.succeed rulesToGrammar
+            |= (Parser.sequence
+                    { start = ""
+                    , separator = "\n"
+                    , end = ""
+                    , spaces = spacesOnly
+                    , item = rule
+                    , trailing = Parser.Optional
+                    }
+                    |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
+               )
 
 
 spacesOnly : Parser ()
@@ -54,8 +55,8 @@ strategy =
             , Pratt.literal <| Parser.map Tag tag
             ]
         , andThenOneOf =
-            [ Pratt.infixLeft 1 spacesOnly Concatenation
-            , Pratt.infixLeft 2 (Parser.symbol "|") Alternation
+            [ Pratt.infixLeft 2 spacesOnly Concatenation
+            , Pratt.infixLeft 1 (Parser.symbol "|") Alternation
             ]
         , spaces = spacesOnly
         }
