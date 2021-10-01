@@ -1,16 +1,44 @@
-module Grammar.Parser exposing (parse)
+module Grammar.Parser exposing (Context(..), Parser, Problem(..), parse)
 
 import Dict
 import Grammar.Internal exposing (Grammar, Strategy(..))
 import List.Extra as List
 import NonemptyList exposing (NonemptyList)
-import Parser exposing ((|.), (|=), Parser)
+import Parser.Advanced as Parser exposing ((|.), (|=), DeadEnd)
 import Parser.Extra as Parser
-import Pratt
+import Pratt.Advanced as Pratt
 import Set
 
 
-parse : String -> Result (List Parser.DeadEnd) Grammar
+type alias Parser a =
+    Parser.Parser Context Problem a
+
+
+type Context
+    = InLiteral
+    | InHidden
+    | InTag
+    | InStrategy
+    | InRule
+
+
+type Problem
+    = RuleListWasEmpty
+    | ShouldntHappen
+    | CouldntFindRuleOnLeftSide String
+    | CouldntFindStartingRuleOnLeftSide String
+    | ExpectingTagName
+    | ExpectingOpeningDoubleQuote
+    | ExpectingClosingDoubleQuote
+    | ExpectingLeftAngleBracket
+    | ExpectingRightAngleBracket
+    | ExpectingPipe
+    | ExpectingArrow
+    | ExpectingNewline
+    | ExpectingLiteral String
+
+
+parse : String -> Result (List (DeadEnd Context Problem)) Grammar
 parse string =
     Parser.run parser string
 
@@ -19,15 +47,20 @@ parser : Parser Grammar
 parser =
     Parser.succeed rulesToGrammar
         |= (Parser.sequence
-                { start = ""
-                , separator = "\n"
-                , end = ""
+                { start = empty
+                , separator = Parser.Token "\n" ExpectingNewline
+                , end = empty
                 , spaces = spacesOnly
                 , item = rule
                 , trailing = Parser.Optional
                 }
-                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
+                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe RuleListWasEmpty)
            )
+
+
+empty : Parser.Token Problem
+empty =
+    Parser.Token "" ShouldntHappen
 
 
 spacesOnly : Parser ()
@@ -41,51 +74,63 @@ rule =
         |. Parser.spaces
         |= tag
         |. Parser.spaces
-        |. Parser.symbol "->"
+        |. Parser.token (Parser.Token "->" ExpectingArrow)
         |. Parser.spaces
         |= strategy
+        |> Parser.inContext InRule
 
 
 strategy : Parser Strategy
 strategy =
     Pratt.expression
         { oneOf =
-            [ Pratt.literal <| Parser.map Literal literal
+            [ hidden
+            , Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
-            , hidden
             ]
         , andThenOneOf =
-            [ Pratt.infixLeft 2 spacesOnly Concatenation
-            , Pratt.infixLeft 1 (Parser.symbol "|") Alternation
+            [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
+            , Pratt.infixLeft 2 spacesOnly Concatenation
             ]
         , spaces = spacesOnly
         }
+        |> Parser.inContext InStrategy
 
 
-hidden : Pratt.Config Strategy -> Parser Strategy
+hidden : Pratt.Config Context Problem Strategy -> Parser Strategy
 hidden config =
     Parser.succeed Hidden
-        |. Parser.symbol "<"
+        |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
         |. spacesOnly
         |= Pratt.subExpression 0 config
         |. spacesOnly
-        |. Parser.symbol ">"
+        |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
+        |> Parser.inContext InHidden
 
 
 literal : Parser String
 literal =
     Parser.succeed identity
-        |. Parser.token "\""
+        |. Parser.token (Parser.Token "\"" ExpectingOpeningDoubleQuote)
         |= Parser.loop [] literalHelp
+        |> Parser.inContext InLiteral
 
 
 literalHelp : List String -> Parser (Parser.Step (List String) String)
 literalHelp revStrs =
     Parser.oneOf
-        [ Parser.token "\""
+        [ Parser.token (Parser.Token "\"" ExpectingClosingDoubleQuote)
             |> Parser.map (\_ -> Parser.Done (String.join "" (List.reverse revStrs)))
         , Parser.chompWhile isUninterestingToLiteral
             |> Parser.getChompedString
+            |> Parser.andThen
+                (\str ->
+                    if String.isEmpty str then
+                        Parser.problem ExpectingClosingDoubleQuote
+
+                    else
+                        Parser.succeed str
+                )
             |> Parser.map (\str -> Parser.Loop (str :: revStrs))
         ]
 
@@ -98,10 +143,12 @@ isUninterestingToLiteral char =
 tag : Parser String
 tag =
     Parser.variable
-        { start = Char.isAlpha
+        { expecting = ExpectingTagName
+        , start = Char.isAlpha
         , inner = Char.isAlphaNum
         , reserved = Set.empty
         }
+        |> Parser.inContext InTag
 
 
 rulesToGrammar : NonemptyList ( String, Strategy ) -> Grammar

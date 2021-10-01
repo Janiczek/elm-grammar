@@ -4,7 +4,7 @@ import Dict
 import Expect
 import Grammar exposing (Error(..), Structure(..))
 import Grammar.Internal exposing (Strategy(..))
-import Grammar.Parser
+import Grammar.Parser exposing (Problem(..))
 import Parser exposing (Problem(..))
 import Test exposing (Test)
 
@@ -27,7 +27,17 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (Grammar.runOn "sausage")
-                    |> Expect.equal (Err (ParseProblem [ { col = 1, problem = Expecting "toast", row = 1 } ]))
+                    |> Expect.equal
+                        (Err
+                            (ParseProblem
+                                [ { col = 1
+                                  , problem = ExpectingLiteral "toast"
+                                  , contextStack = []
+                                  , row = 1
+                                  }
+                                ]
+                            )
+                        )
         , Test.test "two literals - first OK" <|
             \() ->
                 Grammar.parser
@@ -144,20 +154,51 @@ bread      -> "English muffin"
                                 ]
                             )
                         )
+        , Test.test "Cleaner output of larger example with hiding" <|
+            \() ->
+                Grammar.parser
+                    """
+breakfast  -> protein <" with "> breakfast <" on the side">
+breakfast  -> protein 
+breakfast  -> bread 
+
+protein    -> crispiness " crispy bacon" 
+protein    -> "sausage" 
+protein    -> cooked <" "> "eggs" 
+
+crispiness -> "really" 
+crispiness -> "really" <" "> crispiness 
+
+cooked     -> "scrambled" 
+cooked     -> "poached" 
+cooked     -> "fried" 
+
+bread      -> "toast" 
+bread      -> "biscuits" 
+bread      -> "English muffin" 
+                    """
+                    |> Result.andThen (Grammar.runOn "poached eggs with toast on the side")
+                    |> Expect.equal
+                        (Ok
+                            (Node "breakfast"
+                                [ Node "protein"
+                                    [ Node "cooked" [ Terminal "poached" ]
+                                    , Terminal "eggs"
+                                    ]
+                                , Node "breakfast"
+                                    [ Node "bread"
+                                        [ Terminal "toast" ]
+                                    ]
+                                ]
+                            )
+                        )
         ]
 
 
 grammarParsing : Test
 grammarParsing =
     Test.describe "Grammar.Parser.parse"
-        [ Test.test "nonsensical" <|
-            \() ->
-                Grammar.Parser.parse
-                    """
-                    blabla hello
-                    """
-                    |> Expect.equal (Err [ { col = 28, problem = ExpectingSymbol "->", row = 2 } ])
-        , Test.test "simple terminal" <|
+        [ Test.test "simple terminal" <|
             \() ->
                 Grammar.Parser.parse
                     """

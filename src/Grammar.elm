@@ -2,9 +2,9 @@ module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, r
 
 import Dict exposing (Dict)
 import Grammar.Internal exposing (Grammar, Strategy(..))
-import Grammar.Parser
+import Grammar.Parser exposing (Context, Problem(..))
 import NonemptyList exposing (NonemptyList)
-import Parser exposing ((|.), (|=))
+import Parser.Advanced as Parser exposing ((|.), (|=))
 import Parser.Extra as Parser
 
 
@@ -16,8 +16,8 @@ type Structure
 {-| TODO get rid of the DeadEnds and use our custom errors
 -}
 type Error
-    = GrammarProblem (List Parser.DeadEnd)
-    | ParseProblem (List Parser.DeadEnd)
+    = GrammarProblem (List (Parser.DeadEnd Context Problem))
+    | ParseProblem (List (Parser.DeadEnd Context Problem))
     | NeverParserUsed
 
 
@@ -61,11 +61,11 @@ runGrammar grammar input =
         |> Result.mapError ParseProblem
 
 
-toElmParser : Grammar -> Parser.Parser Structure
+toElmParser : Grammar -> Grammar.Parser.Parser Structure
 toElmParser { start, rules } =
     case Dict.get start rules of
         Nothing ->
-            Parser.problem "Couldn't find the starting rule on the left side"
+            Parser.problem (CouldntFindStartingRuleOnLeftSide start)
 
         Just strategies ->
             strategies
@@ -75,7 +75,7 @@ toElmParser { start, rules } =
                 |> Parser.map (Node start)
 
 
-strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Parser.Parser (List Structure)
+strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Grammar.Parser.Parser (List Structure)
 strategyParser rules strategy =
     case strategy of
         Concatenation s1 s2 ->
@@ -90,12 +90,12 @@ strategyParser rules strategy =
 
         Literal literal ->
             Parser.succeed [ Terminal literal ]
-                |. Parser.token literal
+                |. Parser.token (Parser.Token literal (ExpectingLiteral literal))
 
         Tag tag ->
             case Dict.get tag rules of
                 Nothing ->
-                    Parser.problem "Couldn't find the rule on the left side"
+                    Parser.problem (CouldntFindRuleOnLeftSide tag)
 
                 Just strategies ->
                     strategies

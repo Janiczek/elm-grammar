@@ -12,13 +12,13 @@ type alias Grammar =
 
 {-| TODO:
 
-     - Grouping:     s -> (a | b) c
-     - Optional:     s -> a?
-     - One or more:  s -> a+
-     - Zero or more: s -> a*
-     - Regex:        s -> /"[^"]*"/
-     - Comment:      s -> (* hello *) "world"
-     - Hiding:       s -> <"abc">
+     - Grouping:      s  -> (a | b) c
+     - Optional:      s  -> a?
+     - One or more:   s  -> a+
+     - Zero or more:  s  -> a*
+     - Regex:         s  -> /"[^"]*"/
+     - Comment:       s  -> (* hello *) "world"
+     - Hiding tags:  <s> -> "abc"
 
 -}
 type Strategy
