@@ -1,4 +1,4 @@
-module Grammar exposing (Error(..), Parser, Structure(..), parser)
+module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, runOn)
 
 import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
 import Grammar.Parser
@@ -15,25 +15,41 @@ type Structure
 type Error
     = GrammarProblem (List Parser.DeadEnd)
     | ParseProblem (List Parser.DeadEnd)
+    | NeverParserUsed
 
 
-type alias Parser =
-    String -> Result Error Structure
+type Parser
+    = Parser (String -> Result Error Structure)
+
+
+run : Parser -> String -> Result Error Structure
+run (Parser parser_) input =
+    parser_ input
+
+
+runOn : String -> Parser -> Result Error Structure
+runOn input parser_ =
+    run parser_ input
+
+
+never : Parser
+never =
+    Parser (\_ -> Err NeverParserUsed)
 
 
 parser : String -> Result Error Parser
 parser grammarString =
     Grammar.Parser.parse grammarString
         |> Result.mapError GrammarProblem
-        |> Result.map runGrammar
+        |> Result.map (\grammar -> Parser (runGrammar grammar))
 
 
 runGrammar : Grammar -> String -> Result Error Structure
 runGrammar grammar input =
-    Parser.run (parserFromGrammar grammar) input
+    Parser.run (toElmParser grammar) input
         |> Result.mapError ParseProblem
 
 
-parserFromGrammar : Grammar -> Parser.Parser Structure
-parserFromGrammar grammar =
-    Debug.todo "Grammar.parserFromGrammar"
+toElmParser : Grammar -> Parser.Parser Structure
+toElmParser grammar =
+    Debug.todo "Grammar.toElmParser"

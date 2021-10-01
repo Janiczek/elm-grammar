@@ -17,7 +17,7 @@ usage =
                     """
                     bread -> "toast"
                     """
-                    |> Result.andThen (\parser -> parser "toast")
+                    |> Result.andThen (Grammar.runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "literal Err example" <|
             \() ->
@@ -25,7 +25,7 @@ usage =
                     """
                     bread -> "toast"
                     """
-                    |> Result.andThen (\parser -> parser "sausage")
+                    |> Result.andThen (Grammar.runOn "sausage")
                     |> Expect.equal (Err (ParseProblem []))
         , Test.test "two literals - first OK" <|
             \() ->
@@ -34,7 +34,7 @@ usage =
                     bread -> "toast"
                     bread -> "bagel"
                     """
-                    |> Result.andThen (\parser -> parser "toast")
+                    |> Result.andThen (Grammar.runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "two literals - second OK" <|
             \() ->
@@ -43,7 +43,7 @@ usage =
                     bread -> "toast"
                     bread -> "bagel"
                     """
-                    |> Result.andThen (\parser -> parser "bagel")
+                    |> Result.andThen (Grammar.runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         , Test.test "tag is used if first" <|
             \() ->
@@ -52,7 +52,7 @@ usage =
                     breakfast -> bread
                     bread -> "toast"
                     """
-                    |> Result.andThen (\parser -> parser "toast")
+                    |> Result.andThen (Grammar.runOn "toast")
                     |> Expect.equal (Ok (Node "breakfast" [ Node "bread" [ Terminal "toast" ] ]))
         , Test.test "tag is not used if second" <|
             \() ->
@@ -61,7 +61,7 @@ usage =
                     bread -> "toast"
                     breakfast -> bread
                     """
-                    |> Result.andThen (\parser -> parser "toast")
+                    |> Result.andThen (Grammar.runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
         , Test.test "multiple items in sequence" <|
             \() ->
@@ -70,7 +70,7 @@ usage =
                     breakfast -> "breakfast: " bread
                     bread -> "toast"
                     """
-                    |> Result.andThen (\parser -> parser "breakfast: toast")
+                    |> Result.andThen (Grammar.runOn "breakfast: toast")
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
