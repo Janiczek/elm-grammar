@@ -371,6 +371,36 @@ bread      -> "English muffin"
                                 ]
                             )
                         )
+        , Test.test "Larger example with syntactic niceties" <|
+            \() ->
+                Grammar.parser
+                    """
+breakfast -> protein ( <" with "> breakfast <" on the side"> )?
+breakfast -> bread
+
+protein   -> ("really" <" ">)+ "crispy" <" "> "bacon"
+protein   -> "sausage"
+protein   -> cooked <" "> "eggs" 
+
+cooked    -> "scrambled" | "poached" | "fried"
+
+bread     -> "toast" | "biscuits" | "English muffin" 
+                    """
+                    |> Result.andThen (runOn "poached eggs with toast on the side")
+                    |> Expect.equal
+                        (Ok
+                            (Node "breakfast"
+                                [ Node "protein"
+                                    [ Node "cooked" [ Terminal "poached" ]
+                                    , Terminal "eggs"
+                                    ]
+                                , Node "breakfast"
+                                    [ Node "bread"
+                                        [ Terminal "toast" ]
+                                    ]
+                                ]
+                            )
+                        )
         ]
 
 
