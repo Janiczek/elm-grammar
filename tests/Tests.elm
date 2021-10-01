@@ -1,8 +1,9 @@
 module Tests exposing (grammarParsing, usage)
 
+import Dict
 import Expect
 import Grammar exposing (Error(..), Structure(..))
-import Grammar.Internal exposing (Chunk(..))
+import Grammar.Internal exposing (Strategy(..))
 import Grammar.Parser
 import Parser exposing (Problem(..))
 import Test exposing (Test)
@@ -26,7 +27,7 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (Grammar.runOn "sausage")
-                    |> Expect.equal (Err (ParseProblem []))
+                    |> Expect.equal (Err (ParseProblem [ { col = 1, problem = Expecting "toast", row = 1 } ]))
         , Test.test "two literals - first OK" <|
             \() ->
                 Grammar.parser
@@ -63,7 +64,7 @@ usage =
                     """
                     |> Result.andThen (Grammar.runOn "toast")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
-        , Test.test "multiple items in sequence" <|
+        , Test.test "concatenation" <|
             \() ->
                 Grammar.parser
                     """
@@ -79,6 +80,22 @@ usage =
                                 ]
                             )
                         )
+        , Test.test "alternation: first OK" <|
+            \() ->
+                Grammar.parser
+                    """
+                    bread -> "toast" | "bagel"
+                    """
+                    |> Result.andThen (Grammar.runOn "toast")
+                    |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
+        , Test.test "alternation: second OK" <|
+            \() ->
+                Grammar.parser
+                    """
+                    bread -> "toast" | "bagel"
+                    """
+                    |> Result.andThen (Grammar.runOn "bagel")
+                    |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         ]
 
 
@@ -100,10 +117,9 @@ grammarParsing =
                     """
                     |> Expect.equal
                         (Ok
-                            [ { tag = "bread"
-                              , sequence = ( Literal "toast", [] )
-                              }
-                            ]
+                            { start = "bread"
+                            , rules = Dict.fromList [ ( "bread", ( Literal "toast", [] ) ) ]
+                            }
                         )
         , Test.test "two terminals for same tag" <|
             \() ->
@@ -114,13 +130,16 @@ grammarParsing =
                     """
                     |> Expect.equal
                         (Ok
-                            [ { tag = "bread"
-                              , sequence = ( Literal "toast", [] )
-                              }
-                            , { tag = "bread"
-                              , sequence = ( Literal "bagel", [] )
-                              }
-                            ]
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread"
+                                      , ( Literal "toast"
+                                        , [ Literal "bagel" ]
+                                        )
+                                      )
+                                    ]
+                            }
                         )
         , Test.test "tag and terminal" <|
             \() ->
@@ -131,13 +150,13 @@ grammarParsing =
                     """
                     |> Expect.equal
                         (Ok
-                            [ { tag = "bread"
-                              , sequence = ( Literal "toast", [] )
-                              }
-                            , { tag = "breakfast"
-                              , sequence = ( Tag "bread", [] )
-                              }
-                            ]
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread", ( Literal "toast", [] ) )
+                                    , ( "breakfast", ( Tag "bread", [] ) )
+                                    ]
+                            }
                         )
         , Test.test "multiple items in sequence" <|
             \() ->
@@ -148,15 +167,27 @@ grammarParsing =
                     """
                     |> Expect.equal
                         (Ok
-                            [ { tag = "bread"
-                              , sequence = ( Literal "toast", [] )
-                              }
-                            , { tag = "breakfast"
-                              , sequence =
-                                    ( Literal "breakfast"
-                                    , [ Tag "bread" ]
-                                    )
-                              }
-                            ]
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread", ( Literal "toast", [] ) )
+                                    , ( "breakfast", ( Concatenation (Literal "breakfast") (Tag "bread"), [] ) )
+                                    ]
+                            }
+                        )
+        , Test.test "alternation" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    bread -> "toast" | "bagel"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread", ( Alternation (Literal "toast") (Literal "bagel"), [] ) )
+                                    ]
+                            }
                         )
         ]

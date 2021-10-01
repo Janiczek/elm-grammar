@@ -1,8 +1,9 @@
 module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, runOn)
 
-import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
+import Dict exposing (Dict)
+import Grammar.Internal exposing (Grammar, Strategy(..))
 import Grammar.Parser
-import NonemptyList
+import NonemptyList exposing (NonemptyList)
 import Parser exposing ((|.), (|=))
 import Parser.Extra as Parser
 
@@ -61,16 +62,44 @@ runGrammar grammar input =
 
 
 toElmParser : Grammar -> Parser.Parser Structure
-toElmParser grammar =
-    grammar
-        |> List.map ruleParser
-        |> Parser.oneOf
+toElmParser { start, rules } =
+    case Dict.get start rules of
+        Nothing ->
+            Parser.problem "Couldn't find the starting rule on the left side"
+
+        Just strategies ->
+            strategies
+                |> NonemptyList.toList
+                |> List.map (strategyParser rules)
+                |> Parser.oneOf
+                |> Parser.map (Node start)
 
 
-ruleParser : Rule -> Parser.Parser Structure
-ruleParser rule =
-    rule.sequence
-        |> NonemptyList.foldl
-            (\chunk acc -> Debug.todo "add chunk in ruleParser")
-            Nothing
-        |> Parser.fromMaybe "For some reason unsuccessful"
+strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Parser.Parser (List Structure)
+strategyParser rules strategy =
+    case strategy of
+        Concatenation s1 s2 ->
+            Parser.succeed (++)
+                |= strategyParser rules s1
+                |= strategyParser rules s2
+
+        Alternation s1 s2 ->
+            [ s1, s2 ]
+                |> List.map (strategyParser rules)
+                |> Parser.oneOf
+
+        Literal literal ->
+            Parser.succeed [ Terminal literal ]
+                |. Parser.token literal
+
+        Tag tag ->
+            case Dict.get tag rules of
+                Nothing ->
+                    Parser.problem "Couldn't find the rule on the left side"
+
+                Just strategies ->
+                    strategies
+                        |> NonemptyList.toList
+                        |> List.map (strategyParser rules)
+                        |> Parser.oneOf
+                        |> Parser.map (\strategies_ -> [ Node tag strategies_ ])

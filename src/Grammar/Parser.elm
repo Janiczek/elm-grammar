@@ -1,9 +1,12 @@
 module Grammar.Parser exposing (parse)
 
-import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
-import NonemptyList
+import Dict
+import Grammar.Internal exposing (Grammar, Strategy(..))
+import List.Extra as List
+import NonemptyList exposing (NonemptyList)
 import Parser exposing ((|.), (|=), Parser)
 import Parser.Extra as Parser
+import Pratt
 import Set
 
 
@@ -14,14 +17,17 @@ parse string =
 
 parser : Parser Grammar
 parser =
-    Parser.sequence
-        { start = ""
-        , separator = "\n"
-        , end = ""
-        , spaces = spacesOnly
-        , item = rule
-        , trailing = Parser.Optional
-        }
+    Parser.succeed rulesToGrammar
+        |= (Parser.sequence
+                { start = ""
+                , separator = "\n"
+                , end = ""
+                , spaces = spacesOnly
+                , item = rule
+                , trailing = Parser.Optional
+                }
+                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
+           )
 
 
 spacesOnly : Parser ()
@@ -29,32 +35,30 @@ spacesOnly =
     Parser.chompWhile (\c -> c == ' ')
 
 
-rule : Parser Rule
+rule : Parser ( String, Strategy )
 rule =
-    Parser.succeed Rule
+    Parser.succeed Tuple.pair
         |. Parser.spaces
         |= tag
         |. Parser.spaces
         |. Parser.symbol "->"
         |. Parser.spaces
-        |= (Parser.sequence
-                { start = ""
-                , separator = ""
-                , end = ""
-                , spaces = spacesOnly
-                , item = chunk
-                , trailing = Parser.Optional
-                }
-                |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe "List was empty")
-           )
+        |= strategy
 
 
-chunk : Parser Chunk
-chunk =
-    Parser.oneOf
-        [ Parser.map Literal literal
-        , Parser.map Tag tag
-        ]
+strategy : Parser Strategy
+strategy =
+    Pratt.expression
+        { oneOf =
+            [ Pratt.literal <| Parser.map Literal literal
+            , Pratt.literal <| Parser.map Tag tag
+            ]
+        , andThenOneOf =
+            [ Pratt.infixLeft 1 spacesOnly Concatenation
+            , Pratt.infixLeft 2 (Parser.symbol "|") Alternation
+            ]
+        , spaces = spacesOnly
+        }
 
 
 literal : Parser String
@@ -87,3 +91,32 @@ tag =
         , inner = Char.isAlphaNum
         , reserved = Set.empty
         }
+
+
+rulesToGrammar : NonemptyList ( String, Strategy ) -> Grammar
+rulesToGrammar rules =
+    let
+        start : String
+        start =
+            rules
+                |> NonemptyList.head
+                |> Tuple.first
+
+        groupedRules : List ( String, NonemptyList Strategy )
+        groupedRules =
+            rules
+                |> NonemptyList.toList
+                |> List.sortBy Tuple.first
+                |> List.gatherEqualsBy Tuple.first
+                |> List.map
+                    (\( ( tag_, strategy1 ), grouped ) ->
+                        let
+                            restOfStrategies =
+                                List.map Tuple.second grouped
+                        in
+                        ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
+                    )
+    in
+    { start = start
+    , rules = Dict.fromList groupedRules
+    }

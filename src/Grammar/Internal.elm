@@ -1,18 +1,17 @@
-module Grammar.Internal exposing (Chunk(..), Grammar, Rule)
+module Grammar.Internal exposing (Grammar, Strategy(..))
 
+import Dict exposing (Dict)
 import NonemptyList exposing (NonemptyList)
 
 
 type alias Grammar =
-    List Rule
-
-
-type alias Rule =
-    { tag : String
-    , sequence : NonemptyList Chunk
+    { start : String
+    , rules : Dict String (NonemptyList Strategy)
     }
 
 
-type Chunk
-    = Literal String
+type Strategy
+    = Concatenation Strategy Strategy
+    | Alternation Strategy Strategy
+    | Literal String
     | Tag String
