@@ -39,6 +39,7 @@ type Problem
     | ExpectingArrow
     | ExpectingNewline
     | ExpectingLiteral String
+    | ExpectingPlusSign
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -95,6 +96,7 @@ strategy =
         , andThenOneOf =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
             , Pratt.infixLeft 2 spacesOnly Concatenation
+            , Pratt.postfix 3 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
             ]
         , spaces = spacesOnly
         }

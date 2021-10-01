@@ -3,6 +3,7 @@ module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, r
 import Dict exposing (Dict)
 import Grammar.Internal exposing (Grammar, Strategy(..))
 import Grammar.Parser exposing (Context, Problem(..))
+import List.ExtraExtra as List
 import NonemptyList exposing (NonemptyList)
 import Parser.Advanced as Parser exposing ((|.), (|=))
 import Parser.Extra as Parser
@@ -107,3 +108,7 @@ strategyParser rules strategy =
         Hidden s ->
             Parser.succeed []
                 |. Parser.lazy (\() -> strategyParser rules s)
+
+        OneOrMore s ->
+            Parser.succeed (NonemptyList.toList >> List.fastConcat)
+                |= Parser.some (Parser.lazy (\() -> strategyParser rules s))

@@ -13,7 +13,6 @@ type alias Grammar =
 {-| TODO:
 
      - Optional:      s  -> a?
-     - One or more:   s  -> a+
      - Zero or more:  s  -> a*
      - Regex:         s  -> /"[^"]*"/
      - Comment:       s  -> (* hello *) "world"
@@ -26,3 +25,4 @@ type Strategy
     | Literal String
     | Tag String
     | Hidden Strategy
+    | OneOrMore Strategy
