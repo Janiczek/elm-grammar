@@ -52,6 +52,7 @@ strategy =
         { oneOf =
             [ Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
+            , hidden
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 2 spacesOnly Concatenation
@@ -59,6 +60,16 @@ strategy =
             ]
         , spaces = spacesOnly
         }
+
+
+hidden : Pratt.Config Strategy -> Parser Strategy
+hidden config =
+    Parser.succeed Hidden
+        |. Parser.symbol "<"
+        |. spacesOnly
+        |= Pratt.subExpression 0 config
+        |. spacesOnly
+        |. Parser.symbol ">"
 
 
 literal : Parser String

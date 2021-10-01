@@ -96,6 +96,14 @@ usage =
                     """
                     |> Result.andThen (Grammar.runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+        , Test.test "hidden: doesn't show up" <|
+            \() ->
+                Grammar.parser
+                    """
+                    bread -> "toast" | <"yummy "> "bagel"
+                    """
+                    |> Result.andThen (Grammar.runOn "yummy bagel")
+                    |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
         , Test.test "Larger example from the book Crafting Interpreters" <|
             \() ->
                 Grammar.parser
@@ -260,6 +268,27 @@ grammarParsing =
                                                 (Literal "toast")
                                             )
                                             (Literal "bagel")
+                                        , []
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "hidden" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    bread -> <"crispy"> "toast"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread"
+                                      , ( Concatenation
+                                            (Hidden (Literal "crispy"))
+                                            (Literal "toast")
                                         , []
                                         )
                                       )

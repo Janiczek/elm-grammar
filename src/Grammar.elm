@@ -103,3 +103,7 @@ strategyParser rules strategy =
                         |> List.map (\s -> Parser.lazy (\() -> strategyParser rules s))
                         |> Parser.oneOf
                         |> Parser.map (\strategies_ -> [ Node tag strategies_ ])
+
+        Hidden s ->
+            Parser.succeed []
+                |. Parser.lazy (\() -> strategyParser rules s)
