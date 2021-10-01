@@ -70,5 +70,7 @@ toElmParser grammar =
 ruleParser : Rule -> Parser.Parser Structure
 ruleParser rule =
     rule.sequence
-        |> NonemptyList.foldl (\chunk acc -> acc) Nothing
+        |> NonemptyList.foldl
+            (\chunk acc -> Debug.todo "add chunk in ruleParser")
+            Nothing
         |> Parser.fromMaybe "For some reason unsuccessful"
