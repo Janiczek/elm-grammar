@@ -1,7 +1,7 @@
 module Parser.Extra exposing (fromMaybe, many, some)
 
 import NonemptyList exposing (NonemptyList)
-import Parser.Advanced as Parser exposing ((|.), (|=), Parser, Step(..))
+import Parser.Advanced as Parser exposing ((|=), Parser, Step(..))
 
 
 fromMaybe : x -> Maybe a -> Parser c x a
