@@ -1,8 +1,8 @@
 module Grammar.Parser exposing (Context(..), Parser, Problem(..), parse)
 
 import Dict
-import Grammar.Internal exposing (Grammar, Strategy(..))
-import List.Extra as List
+import Grammar.Internal as Internal exposing (Grammar)
+import Grammar.Strategy exposing (Strategy(..))
 import NonemptyList exposing (NonemptyList)
 import Parser.Advanced as Parser exposing ((|.), (|=), DeadEnd)
 import Parser.Extra as Parser
@@ -54,7 +54,7 @@ parse string =
 
 parser : Parser Grammar
 parser =
-    Parser.succeed rulesToGrammar
+    Parser.succeed Internal.fromNonemptyRules
         |= (Parser.sequence
                 { start = empty
                 , separator = Parser.Token "\n" ExpectingNewline
@@ -170,36 +170,7 @@ tag =
     Parser.variable
         { expecting = ExpectingTagName
         , start = Char.isAlpha
-        , inner = Char.isAlphaNum
+        , inner = \c -> Char.isAlphaNum c || c == '-' || c == '_'
         , reserved = Set.empty
         }
         |> Parser.inContext InTag
-
-
-rulesToGrammar : NonemptyList ( String, Strategy ) -> Grammar
-rulesToGrammar rules =
-    let
-        start : String
-        start =
-            rules
-                |> NonemptyList.head
-                |> Tuple.first
-
-        groupedRules : List ( String, NonemptyList Strategy )
-        groupedRules =
-            rules
-                |> NonemptyList.toList
-                |> List.sortBy Tuple.first
-                |> List.gatherEqualsBy Tuple.first
-                |> List.map
-                    (\( ( tag_, strategy1 ), grouped_ ) ->
-                        let
-                            restOfStrategies =
-                                List.map Tuple.second grouped_
-                        in
-                        ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
-                    )
-    in
-    { start = start
-    , rules = Dict.fromList groupedRules
-    }

@@ -1,8 +1,26 @@
-module Grammar exposing (Config, Error(..), Parser, Structure(..), defaultConfig, never, parser, run, runWith)
+module Grammar exposing
+    ( Parser, fromString, fromList, fromNonemptyList, never
+    , Structure(..), run, runWith
+    , Config, defaultConfig
+    , Error(..)
+    )
+
+{-|
+
+@docs Parser, fromString, fromList, fromNonemptyList, never
+
+@docs Structure, run, runWith
+
+@docs Config, defaultConfig
+
+@docs Error
+
+-}
 
 import Dict exposing (Dict)
-import Grammar.Internal exposing (Grammar, Strategy(..))
+import Grammar.Internal as Internal exposing (Grammar)
 import Grammar.Parser exposing (Context, Problem(..))
+import Grammar.Strategy exposing (Strategy(..))
 import List.ExtraExtra as List
 import NonemptyList exposing (NonemptyList)
 import Parser.Advanced as Parser exposing ((|.), (|=))
@@ -12,31 +30,60 @@ import Parser.Extra as Parser
 
 -- TODO visualize (toDOT)
 -- TODO generate values
+-- TODO toString
+-- TODO expose Grammar.Parser.parse somehow?
 
 
+{-| The parsed tree `Structure`.
+
+In case you want to hide some values, use the angle brackets in your grammar: `<a>`
+
+-}
 type Structure
     = Terminal String
     | Node String (List Structure)
 
 
-{-| TODO get rid of the DeadEnds and use our custom errors
+{-| All the ways the grammar construction or parsing can go wrong.
 -}
 type Error
-    = GrammarProblem (List (Parser.DeadEnd Context Problem))
+    = -- TODO get rid of the DeadEnds and use our custom errors
+      GrammarProblem (List (Parser.DeadEnd Context Problem))
     | ParseProblem (List (Parser.DeadEnd Context Problem))
+    | RuleListWasEmpty
     | NeverParserUsed
 
 
+{-| `Parser` is able to transform your input into a tree structure.
+
+  - Create it with
+      - [`Grammar.fromString`](Grammar#fromString)
+      - [`Grammar.fromList`](Grammar#fromList)
+      - [`Grammar.fromNonemptyList`](Grammar#fromNonemptyList)
+
+  - Run it with
+      - [`Grammar.run`](Grammar#run)
+      - [`Grammar.runWith`](Grammar#runWith)
+
+-}
 type Parser
     = Parser (Config -> String -> Result Error Structure)
 
 
+{-| A way to customize how to run the parser.
+
+  - `partial` means the parser will not fail if finishing before the end of the input string.
+  - `start` lets you customize the starting point: by default it is the first rule in the grammar string.
+
+-}
 type alias Config =
     { partial : Bool
     , start : Maybe String
     }
 
 
+{-| By default, we require the parser to consume the whole input, and we start with the first rule in the grammar.
+-}
 defaultConfig : Config
 defaultConfig =
     { partial = False
@@ -44,26 +91,80 @@ defaultConfig =
     }
 
 
+{-| A way to actually run a compiled parser.
+
+Uses the default config.
+
+-}
 run : Parser -> String -> Result Error Structure
 run parser_ input =
     runWith defaultConfig parser_ input
 
 
+{-| A way to actually run a compiled parser with possibly customized config.
+-}
 runWith : Config -> Parser -> String -> Result Error Structure
 runWith config (Parser parser_) input =
     parser_ config input
 
 
+{-| Similar to `elm/regex`, this is something to provide to `Maybe.withDefault` when you're compiling a parser and are sure it will succeed.
+
+This parser will always fail when used.
+
+Read also: <https://jfmengels.net/safe-unsafe-operations-in-elm/>
+
+-}
 never : Parser
 never =
     Parser (\_ _ -> Err NeverParserUsed)
 
 
-parser : String -> Result Error Parser
-parser grammarString =
+{-| A convenient way to compile a grammar in a human-readable string form to a runnable parser.
+
+    Grammar.fromString
+        """
+        expr -> number | parenthesized | op-usage
+
+        number -> digit+
+        digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+        op       -> "+" | "-" | "*" | "/"
+        op-usage -> expr op expr
+
+        parenthesized -> <"("> expr <")">
+        """
+        --> Ok (Parser <function>)
+
+-}
+fromString : String -> Result Error Parser
+fromString grammarString =
     Grammar.Parser.parse grammarString
         |> Result.mapError GrammarProblem
         |> Result.map (\grammar -> Parser (runGrammar grammar))
+
+
+{-| You can create your own grammar programatically instead of as a string: see the `Strategy` type. This is a way to compile it to a parser that you can then run.
+-}
+fromList : List ( String, Strategy ) -> Result Error Parser
+fromList rules =
+    rules
+        |> Internal.fromRules
+        |> Result.fromMaybe RuleListWasEmpty
+        |> Result.map (\grammar -> Parser (runGrammar grammar))
+
+
+{-| You can create your own grammar programatically instead of as a string: see the `Strategy` type. This is a way to compile it to a parser that you can then run.
+
+A non-empty list alternative to [`Grammar.fromList`](Grammar#fromList) that guarantees the parser will successfully compile.
+
+-}
+fromNonemptyList : NonemptyList ( String, Strategy ) -> Parser
+fromNonemptyList rules =
+    rules
+        |> Internal.fromNonemptyRules
+        |> runGrammar
+        |> Parser
 
 
 runGrammar : Grammar -> Config -> String -> Result Error Structure

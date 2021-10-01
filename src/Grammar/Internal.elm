@@ -1,6 +1,12 @@
-module Grammar.Internal exposing (Grammar, Strategy(..))
+module Grammar.Internal exposing
+    ( Grammar
+    , fromNonemptyRules
+    , fromRules
+    )
 
 import Dict exposing (Dict)
+import Grammar.Strategy exposing (Strategy)
+import List.Extra as List
 import NonemptyList exposing (NonemptyList)
 
 
@@ -10,33 +16,37 @@ type alias Grammar =
     }
 
 
-{-| Implemented:
+fromRules : List ( String, Strategy ) -> Maybe Grammar
+fromRules rules =
+    rules
+        |> NonemptyList.fromList
+        |> Maybe.map fromNonemptyRules
 
-     - Literal:       s -> "a"
-     - Tag:           s -> a
-     - Concatenation: s -> a b
-     - Alternation:   s -> a | b
-     - Grouping:      s -> (a)
-     - Hiding:        s -> <a>
-     - Optional:      s -> a?
-     - Zero or more:  s -> a*
-     - One or more:   s -> a+
-     - Lookahead:     s -> &a
 
-TODO:
+fromNonemptyRules : NonemptyList ( String, Strategy ) -> Grammar
+fromNonemptyRules rules =
+    let
+        start : String
+        start =
+            rules
+                |> NonemptyList.head
+                |> Tuple.first
 
-     - Regex:         s  -> /"[^"]*"/
-     - Comment:       s  -> (* hello *) "world"
-     - Hiding tags:  <s> -> "abc"
-
--}
-type Strategy
-    = Concatenation Strategy Strategy
-    | Alternation Strategy Strategy
-    | Literal String
-    | Tag String
-    | Hidden Strategy
-    | OneOrMore Strategy
-    | ZeroOrMore Strategy
-    | Optional Strategy
-    | Lookahead Strategy
+        groupedRules : List ( String, NonemptyList Strategy )
+        groupedRules =
+            rules
+                |> NonemptyList.toList
+                |> List.sortBy Tuple.first
+                |> List.gatherEqualsBy Tuple.first
+                |> List.map
+                    (\( ( tag_, strategy1 ), grouped_ ) ->
+                        let
+                            restOfStrategies =
+                                List.map Tuple.second grouped_
+                        in
+                        ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
+                    )
+    in
+    { start = start
+    , rules = Dict.fromList groupedRules
+    }
