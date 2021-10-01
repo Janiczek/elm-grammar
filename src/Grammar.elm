@@ -32,6 +32,7 @@ import Parser.Extra as Parser
 -- TODO generate values
 -- TODO toString
 -- TODO expose Grammar.Parser.parse somehow?
+-- TODO automatic whitespace
 
 
 {-| The parsed tree `Structure`.
