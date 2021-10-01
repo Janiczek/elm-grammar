@@ -2,7 +2,7 @@ module Grammar exposing (Error(..), Parser, Structure(..), never, parser, run, r
 
 import Grammar.Internal exposing (Chunk(..), Grammar, Rule)
 import Grammar.Parser
-import Parser
+import Parser exposing ((|.), (|=))
 
 
 type Structure
@@ -60,4 +60,6 @@ runGrammar grammar input =
 
 toElmParser : Grammar -> Parser.Parser Structure
 toElmParser grammar =
-    Debug.todo "Grammar.toElmParser"
+    Parser.oneOf
+        [ Debug.todo "Grammar.toElmParser"
+        ]
