@@ -5,14 +5,14 @@ module Grammar.Internal exposing
     )
 
 import Dict exposing (Dict)
-import Grammar.Strategy exposing (Strategy)
+import Grammar.Strategy exposing (Strategy(..))
 import List.Extra as List
 import NonemptyList exposing (NonemptyList)
 
 
 type alias Grammar =
     { start : String
-    , rules : Dict String (NonemptyList Strategy)
+    , rules : Dict String Strategy
     }
 
 
@@ -32,7 +32,7 @@ fromNonemptyRules rules =
                 |> NonemptyList.head
                 |> Tuple.first
 
-        groupedRules : List ( String, NonemptyList Strategy )
+        groupedRules : List ( String, Strategy )
         groupedRules =
             rules
                 |> NonemptyList.toList
@@ -44,7 +44,7 @@ fromNonemptyRules rules =
                             restOfStrategies =
                                 List.map Tuple.second grouped_
                         in
-                        ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
+                        ( tag_, List.foldl Alternation strategy1 restOfStrategies )
                     )
     in
     { start = start

@@ -1,4 +1,7 @@
-module Grammar.Strategy exposing (Strategy(..))
+module Grammar.Strategy exposing
+    ( Strategy(..)
+    , literalValue, toComparable
+    )
 
 {-| Strategy is the internal representation of the parsed context-free grammar.
 
@@ -40,3 +43,48 @@ type Strategy
     | ZeroOrMore Strategy
     | OneOrMore Strategy
     | Lookahead Strategy
+
+
+toComparable : Strategy -> String
+toComparable strategy =
+    case strategy of
+        Literal str ->
+            "\"" ++ str ++ "\""
+
+        Tag tag ->
+            tag
+
+        Concatenation s1 s2 ->
+            toComparable s1
+                ++ " "
+                ++ toComparable s2
+
+        Alternation s1 s2 ->
+            toComparable s1
+                ++ " | "
+                ++ toComparable s2
+
+        Hidden s ->
+            "<" ++ toComparable s ++ ">"
+
+        Optional s ->
+            toComparable s ++ "?"
+
+        ZeroOrMore s ->
+            toComparable s ++ "*"
+
+        OneOrMore s ->
+            toComparable s ++ "+"
+
+        Lookahead s ->
+            "&" ++ toComparable s
+
+
+literalValue : Strategy -> Maybe String
+literalValue strategy =
+    case strategy of
+        Literal literal ->
+            Just literal
+
+        _ ->
+            Nothing

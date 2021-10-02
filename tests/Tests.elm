@@ -2,9 +2,12 @@ module Tests exposing (grammarParsing, usage)
 
 import Dict
 import Expect
-import Grammar exposing (Config, Error(..), Parser, Structure(..))
+import Grammar exposing (Parser)
+import Grammar.Config exposing (Config)
+import Grammar.Error exposing (Error(..), GLLParserError(..))
 import Grammar.Parser exposing (Problem(..))
 import Grammar.Strategy exposing (Strategy(..))
+import Grammar.Structure exposing (Structure(..))
 import Parser exposing (Problem(..))
 import Test exposing (Test)
 
@@ -28,7 +31,7 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (runOn "toast")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "toast")))
         , Test.test "literal Err example" <|
             \() ->
                 Grammar.fromString
@@ -36,17 +39,7 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (runOn "sausage")
-                    |> Expect.equal
-                        (Err
-                            (ParseProblem
-                                [ { col = 1
-                                  , problem = ExpectingLiteral "toast"
-                                  , contextStack = []
-                                  , row = 1
-                                  }
-                                ]
-                            )
-                        )
+                    |> Expect.equal (Err (GLLParserError (ExpectedLiteral "toast")))
         , Test.test "two literals - first OK" <|
             \() ->
                 Grammar.fromString
@@ -55,7 +48,7 @@ usage =
                     bread -> "bagel"
                     """
                     |> Result.andThen (runOn "toast")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "toast")))
         , Test.test "two literals - second OK" <|
             \() ->
                 Grammar.fromString
@@ -64,7 +57,7 @@ usage =
                     bread -> "bagel"
                     """
                     |> Result.andThen (runOn "bagel")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "bagel")))
         , Test.test "tag is used if first" <|
             \() ->
                 Grammar.fromString
@@ -73,7 +66,7 @@ usage =
                     bread -> "toast"
                     """
                     |> Result.andThen (runOn "toast")
-                    |> Expect.equal (Ok (Node "breakfast" [ Node "bread" [ Terminal "toast" ] ]))
+                    |> Expect.equal (Ok (Node "breakfast" (Node "bread" (Terminal "toast"))))
         , Test.test "tag is not used if second" <|
             \() ->
                 Grammar.fromString
@@ -82,7 +75,7 @@ usage =
                     breakfast -> bread
                     """
                     |> Result.andThen (runOn "toast")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "toast")))
         , Test.test "concatenation" <|
             \() ->
                 Grammar.fromString
@@ -94,9 +87,11 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
-                                [ Terminal "breakfast: "
-                                , Node "bread" [ Terminal "toast" ]
-                                ]
+                                (List
+                                    [ Terminal "breakfast: "
+                                    , Node "bread" (Terminal "toast")
+                                    ]
+                                )
                             )
                         )
         , Test.test "alternation: first OK" <|
@@ -106,7 +101,7 @@ usage =
                     bread -> "toast" | "bagel"
                     """
                     |> Result.andThen (runOn "toast")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "toast" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "toast")))
         , Test.test "alternation: second OK" <|
             \() ->
                 Grammar.fromString
@@ -114,7 +109,7 @@ usage =
                     bread -> "toast" | "bagel"
                     """
                     |> Result.andThen (runOn "bagel")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "bagel")))
         , Test.test "hidden: doesn't show up" <|
             \() ->
                 Grammar.fromString
@@ -122,7 +117,7 @@ usage =
                     bread -> "toast" | <"yummy "> "bagel"
                     """
                     |> Result.andThen (runOn "yummy bagel")
-                    |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+                    |> Expect.equal (Ok (Node "bread" (Terminal "bagel")))
         , Test.test "grouping: 'ac' is OK" <|
             \() ->
                 Grammar.fromString
@@ -133,9 +128,11 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "s"
-                                [ Terminal "a"
-                                , Terminal "c"
-                                ]
+                                (List
+                                    [ Terminal "a"
+                                    , Terminal "c"
+                                    ]
+                                )
                             )
                         )
         , Test.test "grouping: 'bc' is OK" <|
@@ -148,9 +145,11 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "s"
-                                [ Terminal "b"
-                                , Terminal "c"
-                                ]
+                                (List
+                                    [ Terminal "b"
+                                    , Terminal "c"
+                                    ]
+                                )
                             )
                         )
         , Test.test "one or more: zero doesn't work" <|
@@ -168,7 +167,7 @@ usage =
                     s -> "a"+
                     """
                     |> Result.andThen (runOn "a")
-                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+                    |> Expect.equal (Ok (Node "s" (Terminal "a")))
         , Test.test "one or more: two work" <|
             \() ->
                 Grammar.fromString
@@ -179,9 +178,11 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "s"
-                                [ Terminal "a"
-                                , Terminal "a"
-                                ]
+                                (List
+                                    [ Terminal "a"
+                                    , Terminal "a"
+                                    ]
+                                )
                             )
                         )
         , Test.test "zero or more: zero works" <|
@@ -191,7 +192,7 @@ usage =
                     s -> "a"*
                     """
                     |> Result.andThen (runOn "")
-                    |> Expect.equal (Ok (Node "s" []))
+                    |> Expect.equal (Ok (Node "s" (List [])))
         , Test.test "zero or more: one works" <|
             \() ->
                 Grammar.fromString
@@ -199,7 +200,7 @@ usage =
                     s -> "a"*
                     """
                     |> Result.andThen (runOn "a")
-                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+                    |> Expect.equal (Ok (Node "s" (Terminal "a")))
         , Test.test "zero or more: two work" <|
             \() ->
                 Grammar.fromString
@@ -210,9 +211,11 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "s"
-                                [ Terminal "a"
-                                , Terminal "a"
-                                ]
+                                (List
+                                    [ Terminal "a"
+                                    , Terminal "a"
+                                    ]
+                                )
                             )
                         )
         , Test.test "optional: zero works" <|
@@ -222,7 +225,7 @@ usage =
                     s -> "a"?
                     """
                     |> Result.andThen (runOn "")
-                    |> Expect.equal (Ok (Node "s" []))
+                    |> Expect.equal (Ok (Node "s" (List [])))
         , Test.test "optional: one works" <|
             \() ->
                 Grammar.fromString
@@ -230,7 +233,7 @@ usage =
                     s -> "a"?
                     """
                     |> Result.andThen (runOn "a")
-                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+                    |> Expect.equal (Ok (Node "s" (Terminal "a")))
         , Test.test "optional: two don't work with default config (partial = False)" <|
             \() ->
                 Grammar.fromString
@@ -252,7 +255,7 @@ usage =
                             }
                             "aa"
                         )
-                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+                    |> Expect.equal (Ok (Node "s" (Terminal "a")))
         , Test.test "custom start" <|
             \() ->
                 Grammar.fromString
@@ -267,7 +270,7 @@ usage =
                             }
                             "a"
                         )
-                    |> Expect.equal (Ok (Node "a" [ Terminal "a" ]))
+                    |> Expect.equal (Ok (Node "a" (Terminal "a")))
         , Test.test "lookahead: fails" <|
             \() ->
                 Grammar.fromString
@@ -286,11 +289,13 @@ usage =
                     |> Expect.equal
                         (Ok
                             (Node "s"
-                                [ Terminal "a"
-                                , Terminal "b"
-                                , Terminal "a"
-                                , Terminal "b"
-                                ]
+                                (List
+                                    [ Terminal "a"
+                                    , Terminal "b"
+                                    , Terminal "a"
+                                    , Terminal "b"
+                                    ]
+                                )
                             )
                         )
         , Test.test "Larger example from the book Crafting Interpreters" <|
@@ -320,17 +325,21 @@ bread      -> "English muffin"
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
-                                [ Node "protein"
-                                    [ Node "cooked" [ Terminal "poached" ]
-                                    , Terminal " eggs"
+                                (List
+                                    [ Node "protein"
+                                        (List
+                                            [ Node "cooked" (Terminal "poached")
+                                            , Terminal " eggs"
+                                            ]
+                                        )
+                                    , Terminal " with "
+                                    , Node "breakfast"
+                                        (Node "bread"
+                                            (Terminal "toast")
+                                        )
+                                    , Terminal " on the side"
                                     ]
-                                , Terminal " with "
-                                , Node "breakfast"
-                                    [ Node "bread"
-                                        [ Terminal "toast" ]
-                                    ]
-                                , Terminal " on the side"
-                                ]
+                                )
                             )
                         )
         , Test.test "Cleaner output of larger example with hiding" <|
@@ -360,15 +369,19 @@ bread      -> "English muffin"
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
-                                [ Node "protein"
-                                    [ Node "cooked" [ Terminal "poached" ]
-                                    , Terminal "eggs"
+                                (List
+                                    [ Node "protein"
+                                        (List
+                                            [ Node "cooked" (Terminal "poached")
+                                            , Terminal "eggs"
+                                            ]
+                                        )
+                                    , Node "breakfast"
+                                        (Node "bread"
+                                            (Terminal "toast")
+                                        )
                                     ]
-                                , Node "breakfast"
-                                    [ Node "bread"
-                                        [ Terminal "toast" ]
-                                    ]
-                                ]
+                                )
                             )
                         )
         , Test.test "Larger example with syntactic niceties" <|
@@ -390,15 +403,19 @@ bread     -> "toast" | "biscuits" | "English muffin"
                     |> Expect.equal
                         (Ok
                             (Node "breakfast"
-                                [ Node "protein"
-                                    [ Node "cooked" [ Terminal "poached" ]
-                                    , Terminal "eggs"
+                                (List
+                                    [ Node "protein"
+                                        (List
+                                            [ Node "cooked" (Terminal "poached")
+                                            , Terminal "eggs"
+                                            ]
+                                        )
+                                    , Node "breakfast"
+                                        (Node "bread"
+                                            (Terminal "toast")
+                                        )
                                     ]
-                                , Node "breakfast"
-                                    [ Node "bread"
-                                        [ Terminal "toast" ]
-                                    ]
-                                ]
+                                )
                             )
                         )
         , Test.test "Digits" <|
@@ -412,10 +429,12 @@ digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
                     |> Expect.equal
                         (Ok
                             (Node "number"
-                                [ Node "digit" [ Terminal "1" ]
-                                , Node "digit" [ Terminal "2" ]
-                                , Node "digit" [ Terminal "3" ]
-                                ]
+                                (List
+                                    [ Node "digit" (Terminal "1")
+                                    , Node "digit" (Terminal "2")
+                                    , Node "digit" (Terminal "3")
+                                    ]
+                                )
                             )
                         )
         , Test.test "Arithmetic example from docs" <|
@@ -433,18 +452,22 @@ op-usage -> expr op expr
 parenthesized -> <"("> expr <")">
                     """
                     |> Result.andThen (runOn "(4+5)*(2-6)/3")
+                    |> Expect.equal (Ok (Terminal "TODO"))
+        , Test.test "left recursion" <|
+            \() ->
+                Grammar.fromString
+                    """
+                        s -> "a" | s "a"
+                        """
+                    |> Result.andThen (runOn "aa")
                     |> Expect.equal
                         (Ok
-                            (Node "breakfast"
-                                [ Node "protein"
-                                    [ Node "cooked" [ Terminal "poached" ]
-                                    , Terminal "eggs"
+                            (Node "s"
+                                (List
+                                    [ Node "s" (Terminal "a")
+                                    , Terminal "a"
                                     ]
-                                , Node "breakfast"
-                                    [ Node "bread"
-                                        [ Terminal "toast" ]
-                                    ]
-                                ]
+                                )
                             )
                         )
         ]
@@ -462,7 +485,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "bread"
-                            , rules = Dict.fromList [ ( "bread", ( Literal "toast", [] ) ) ]
+                            , rules = Dict.fromList [ ( "bread", Literal "toast" ) ]
                             }
                         )
         , Test.test "two terminals for same tag" <|
@@ -478,9 +501,9 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Literal "toast"
-                                        , [ Literal "bagel" ]
-                                        )
+                                      , Alternation
+                                            (Literal "toast")
+                                            (Literal "bagel")
                                       )
                                     ]
                             }
@@ -497,8 +520,8 @@ grammarParsing =
                             { start = "bread"
                             , rules =
                                 Dict.fromList
-                                    [ ( "bread", ( Literal "toast", [] ) )
-                                    , ( "breakfast", ( Tag "bread", [] ) )
+                                    [ ( "bread", Literal "toast" )
+                                    , ( "breakfast", Tag "bread" )
                                     ]
                             }
                         )
@@ -514,13 +537,11 @@ grammarParsing =
                             { start = "bread"
                             , rules =
                                 Dict.fromList
-                                    [ ( "bread", ( Literal "toast", [] ) )
+                                    [ ( "bread", Literal "toast" )
                                     , ( "breakfast"
-                                      , ( Concatenation
+                                      , Concatenation
                                             (Literal "breakfast")
                                             (Tag "bread")
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -537,11 +558,9 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Alternation
+                                      , Alternation
                                             (Literal "toast")
                                             (Literal "bagel")
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -558,14 +577,12 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Alternation
+                                      , Alternation
                                             (Concatenation
                                                 (Literal "crispy")
                                                 (Literal "toast")
                                             )
                                             (Literal "bagel")
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -582,11 +599,9 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Concatenation
+                                      , Concatenation
                                             (Hidden (Literal "crispy"))
                                             (Literal "toast")
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -603,14 +618,12 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "s"
-                                      , ( Concatenation
+                                      , Concatenation
                                             (Alternation
                                                 (Literal "a")
                                                 (Literal "b")
                                             )
                                             (Literal "c")
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -624,7 +637,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( OneOrMore (Literal "a"), [] ) ) ]
+                            , rules = Dict.fromList [ ( "s", OneOrMore (Literal "a") ) ]
                             }
                         )
         , Test.test "zero or more" <|
@@ -636,7 +649,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( ZeroOrMore (Literal "a"), [] ) ) ]
+                            , rules = Dict.fromList [ ( "s", ZeroOrMore (Literal "a") ) ]
                             }
                         )
         , Test.test "optional" <|
@@ -648,7 +661,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( Optional (Literal "a"), [] ) ) ]
+                            , rules = Dict.fromList [ ( "s", Optional (Literal "a") ) ]
                             }
                         )
         , Test.test "lookahead" <|
@@ -660,7 +673,7 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( Lookahead (Literal "ab"), [] ) ) ]
+                            , rules = Dict.fromList [ ( "s", Lookahead (Literal "ab") ) ]
                             }
                         )
         , Test.test "lookahead 2" <|
@@ -675,7 +688,7 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "s"
-                                      , ( Concatenation
+                                      , Concatenation
                                             (Lookahead (Literal "ab"))
                                             (OneOrMore
                                                 (Alternation
@@ -683,8 +696,6 @@ grammarParsing =
                                                     (Literal "b")
                                                 )
                                             )
-                                        , []
-                                        )
                                       )
                                     ]
                             }
@@ -701,8 +712,8 @@ grammarParsing =
                             { start = "with-hyphen"
                             , rules =
                                 Dict.fromList
-                                    [ ( "with-hyphen", ( Literal "A", [] ) )
-                                    , ( "with_underscore", ( Literal "B", [] ) )
+                                    [ ( "with-hyphen", Literal "A" )
+                                    , ( "with_underscore", Literal "B" )
                                     ]
                             }
                         )
@@ -725,12 +736,12 @@ parenthesized -> <"("> expr <")">
                             { start = "expr"
                             , rules =
                                 Dict.fromList
-                                    [ ( "digit", ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] ) )
-                                    , ( "expr", ( Alternation (Alternation (Tag "number") (Tag "parenthesized")) (Tag "op-usage"), [] ) )
-                                    , ( "number", ( OneOrMore (Tag "digit"), [] ) )
-                                    , ( "op", ( Alternation (Alternation (Alternation (Literal "+") (Literal "-")) (Literal "*")) (Literal "/"), [] ) )
-                                    , ( "op-usage", ( Concatenation (Concatenation (Tag "expr") (Tag "op")) (Tag "expr"), [] ) )
-                                    , ( "parenthesized", ( Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")), [] ) )
+                                    [ ( "digit", Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9") )
+                                    , ( "expr", Alternation (Alternation (Tag "number") (Tag "parenthesized")) (Tag "op-usage") )
+                                    , ( "number", OneOrMore (Tag "digit") )
+                                    , ( "op", Alternation (Alternation (Alternation (Literal "+") (Literal "-")) (Literal "*")) (Literal "/") )
+                                    , ( "op-usage", Concatenation (Concatenation (Tag "expr") (Tag "op")) (Tag "expr") )
+                                    , ( "parenthesized", Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")) )
                                     ]
                             }
                         )
