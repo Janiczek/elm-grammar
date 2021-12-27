@@ -55,27 +55,10 @@ parse string =
     Parser.run parser string
 
 
-log : String -> Parser ()
-log label =
-    Parser.succeed
-        (\offset source ->
-            let
-                _ =
-                    String.slice offset (offset + 50) source
-                        |> Debug.log label
-            in
-            ()
-        )
-        |= Parser.getOffset
-        |= Parser.getSource
-
-
 parser : Parser Grammar
 parser =
     Parser.succeed Internal.fromNonemptyRules
-        |. log "beginning"
         |. spacesOrComment { allowNewlines = True }
-        |. log "after first spaces"
         |= (Parser.sequence
                 { start = empty
                 , separator = Parser.Token "\n" ExpectingNewline
