@@ -235,7 +235,7 @@ strategyParser rules strategy =
                 |. Parser.token (Parser.Token literal (ExpectingLiteral literal))
 
         Tag tag ->
-            case Dict.get tag rules of
+            case Dict.get tag (Debug.log "rules" rules) of
                 Nothing ->
                     Parser.problem (CouldntFindRuleOnLeftSide tag)
 

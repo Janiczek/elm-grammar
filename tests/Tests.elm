@@ -465,6 +465,53 @@ factor-op -> "*" | "/"
                                 ]
                             )
                         )
+        , Test.test "comment before tag" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    (* hello *) example -> "world"
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "comment before arrow" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example (* hello *) -> "world"
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "comment after arrow" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> (* hello *) "world"
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "comment between rules contents" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "world" (* hello *) "wide"
+                    """
+                    |> Result.andThen (runOn "worldwide")
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Terminal "world"
+                                , Terminal "wide"
+                                ]
+                            )
+                        )
+        , Test.test "comment after rule content" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "world" (* hello *)
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
         ]
 
 
@@ -754,6 +801,18 @@ factor-op -> "*" | "/"
                                     , ( "term-op", ( Alternation (Literal "-") (Literal "+"), [] ) )
                                     ]
                             , start = "expr"
+                            }
+                        )
+        , Test.test "comment doesn't show up" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    example -> (* hello *) "world"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "example"
+                            , rules = Dict.fromList [ ( "example", ( Literal "world", [] ) ) ]
                             }
                         )
         ]

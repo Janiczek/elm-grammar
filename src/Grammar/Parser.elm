@@ -45,6 +45,9 @@ type Problem
     | ExpectingEndOfString
     | ExpectingAmpersand
     | ExpectingLookahead
+    | ExpectingOpeningCommentBrace
+    | ExpectingClosingCommentBrace
+    | ExpectingNonemptySpaces
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -52,19 +55,38 @@ parse string =
     Parser.run parser string
 
 
+log : String -> Parser ()
+log label =
+    Parser.succeed
+        (\offset source ->
+            let
+                _ =
+                    String.slice offset (offset + 50) source
+                        |> Debug.log label
+            in
+            ()
+        )
+        |= Parser.getOffset
+        |= Parser.getSource
+
+
 parser : Parser Grammar
 parser =
     Parser.succeed Internal.fromNonemptyRules
+        |. log "beginning"
+        |. spacesOrComment { allowNewlines = True }
+        |. log "after first spaces"
         |= (Parser.sequence
                 { start = empty
                 , separator = Parser.Token "\n" ExpectingNewline
                 , end = empty
-                , spaces = spacesOnly
+                , spaces = spacesOrComment { allowNewlines = False }
                 , item = rule
                 , trailing = Parser.Optional
                 }
                 |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe RuleListWasEmpty)
            )
+        |. spacesOrComment { allowNewlines = True }
 
 
 empty : Parser.Token Problem
@@ -72,19 +94,63 @@ empty =
     Parser.Token "" ShouldntHappen
 
 
-spacesOnly : Parser ()
-spacesOnly =
-    Parser.chompWhile (\c -> c == ' ')
+spacesOrComment : { allowNewlines : Bool } -> Parser ()
+spacesOrComment { allowNewlines } =
+    let
+        chompFn : Char -> Bool
+        chompFn =
+            if allowNewlines then
+                \c -> c == ' ' || c == '\t' || c == '\n'
+
+            else
+                \c -> c == ' ' || c == '\t'
+    in
+    Parser.loop () <|
+        \() ->
+            Parser.oneOf
+                [ Parser.oneOf
+                    [ Parser.chompWhile chompFn
+                        |> Parser.getChompedString
+                        |> Parser.andThen
+                            (\str ->
+                                if String.isEmpty str then
+                                    Parser.problem ExpectingNonemptySpaces
+
+                                else
+                                    Parser.succeed ()
+                            )
+                    , comment
+                    ]
+                    |> Parser.map Parser.Loop
+                , Parser.succeed (Parser.Done ())
+                ]
+
+
+comment : Parser ()
+comment =
+    let
+        openingCommentBrace =
+            Parser.Token "(*" ExpectingOpeningCommentBrace
+
+        closingCommentBrace =
+            Parser.Token "*)" ExpectingClosingCommentBrace
+    in
+    Parser.succeed ()
+        |. Parser.multiComment
+            openingCommentBrace
+            closingCommentBrace
+            Parser.NotNestable
+        |. Parser.token closingCommentBrace
 
 
 rule : Parser ( String, Strategy )
 rule =
     Parser.succeed Tuple.pair
-        |. Parser.spaces
+        |. spacesOrComment { allowNewlines = True }
         |= tag
-        |. Parser.spaces
+        |. spacesOrComment { allowNewlines = False }
         |. Parser.token (Parser.Token "->" ExpectingArrow)
-        |. Parser.spaces
+        |. spacesOrComment { allowNewlines = False }
         |= strategy
         |> Parser.inContext InRule
 
@@ -101,12 +167,12 @@ strategy =
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
-            , Pratt.infixLeft 2 spacesOnly Concatenation
+            , Pratt.infixLeft 2 (spacesOrComment { allowNewlines = False }) Concatenation
             , Pratt.postfix 4 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
             , Pratt.postfix 5 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
             , Pratt.postfix 6 (Parser.token (Parser.Token "?" ExpectingQuestionMark)) Optional
             ]
-        , spaces = spacesOnly
+        , spaces = spacesOrComment { allowNewlines = False }
         }
         |> Parser.inContext InStrategy
 
@@ -115,9 +181,9 @@ hidden : Pratt.Config Context Problem Strategy -> Parser Strategy
 hidden config =
     Parser.succeed Hidden
         |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
-        |. spacesOnly
+        |. spacesOrComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOnly
+        |. spacesOrComment { allowNewlines = False }
         |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         |> Parser.inContext InHidden
 
@@ -126,9 +192,9 @@ grouped : Pratt.Config Context Problem Strategy -> Parser Strategy
 grouped config =
     Parser.succeed identity
         |. Parser.token (Parser.Token "(" ExpectingLeftParenthesis)
-        |. spacesOnly
+        |. spacesOrComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOnly
+        |. spacesOrComment { allowNewlines = False }
         |. Parser.token (Parser.Token ")" ExpectingRightParenthesis)
         |> Parser.inContext InGrouped
 

@@ -37,12 +37,12 @@ bread     -> "toast" | "biscuits" | "English muffin"
 - Zero or more:  s -> a*
 - One or more:   s -> a+
 - Lookahead:     s -> &a
+- Comment:       s -> (* hello *) "world"
 ```
 
 ### TODO:
 
 ```
 - Regex:         s  -> /"[^"]*"/
-- Comment:       s  -> (* hello *) "world"
 - Hiding tags:  <s> -> "abc"
 ```
