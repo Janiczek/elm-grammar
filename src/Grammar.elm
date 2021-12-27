@@ -1,6 +1,6 @@
 module Grammar exposing
     ( Parser, fromString, fromList, fromNonemptyList, never
-    , Structure(..), run, runWith
+    , Structure(..), run, runWith, toDot
     , Config, defaultConfig
     , Error(..)
     )
@@ -9,7 +9,7 @@ module Grammar exposing
 
 @docs Parser, fromString, fromList, fromNonemptyList, never
 
-@docs Structure, run, runWith
+@docs Structure, run, runWith, toDot
 
 @docs Config, defaultConfig
 
@@ -21,6 +21,8 @@ import Dict exposing (Dict)
 import Grammar.Internal as Internal exposing (Grammar)
 import Grammar.Parser exposing (Context, Problem(..))
 import Grammar.Strategy exposing (Strategy(..))
+import Graph
+import Graph.DOT exposing (defaultStyles)
 import List.ExtraExtra as List
 import NonemptyList exposing (NonemptyList)
 import Parser.Advanced as Parser exposing ((|.), (|=))
@@ -277,3 +279,67 @@ strategyParser rules strategy =
                                         Parser.succeed ()
                             )
                    )
+
+
+graphStyles : Graph.DOT.Styles
+graphStyles =
+    { defaultStyles
+        | node = """fillcolor="#eeeeee",color="#bbbbbb",style=filled"""
+    }
+
+
+toDot : Structure -> String
+toDot structure =
+    let
+        toNodesAndEdges :
+            Int
+            -> List ( Structure, Maybe Int )
+            -> ( List (Graph.Node String), List (Graph.Edge ()) )
+            -> ( List (Graph.Node String), List (Graph.Edge ()) )
+        toNodesAndEdges nextId todos ( nodes, edges ) =
+            case todos of
+                [] ->
+                    ( nodes, edges )
+
+                ( s, parentId ) :: restOfTodos ->
+                    case s of
+                        Terminal terminal ->
+                            toNodesAndEdges
+                                (nextId + 1)
+                                restOfTodos
+                                ( Graph.Node nextId terminal :: nodes
+                                , case parentId of
+                                    Nothing ->
+                                        edges
+
+                                    Just parentId_ ->
+                                        Graph.Edge parentId_ nextId () :: edges
+                                )
+
+                        Node tag structures ->
+                            let
+                                newTodos =
+                                    structures
+                                        |> List.map (\s_ -> ( s_, Just nextId ))
+                            in
+                            toNodesAndEdges
+                                (nextId + 1)
+                                (restOfTodos ++ newTodos)
+                                ( Graph.Node nextId tag :: nodes
+                                , case parentId of
+                                    Nothing ->
+                                        edges
+
+                                    Just parentId_ ->
+                                        Graph.Edge parentId_ nextId () :: edges
+                                )
+    in
+    toNodesAndEdges
+        1
+        [ ( structure, Nothing ) ]
+        ( [], [] )
+        |> (\( nodes, edges ) -> Graph.fromNodesAndEdges nodes edges)
+        |> Graph.DOT.outputWithStyles
+            graphStyles
+            Just
+            (\_ -> Nothing)

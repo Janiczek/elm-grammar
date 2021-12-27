@@ -422,41 +422,46 @@ digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             \() ->
                 Grammar.fromString
                     """
-expr -> primary (op primary)*
+expr   -> term (term-op term)*
+term   -> factor (factor-op factor)*
+factor -> number | parenthesized
 
 parenthesized -> <"("> expr <")">
 
-primary -> number | parenthesized
-
 number -> digit+
 digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-op     -> "+" | "-" | "*" | "/"
+
+term-op   -> "-" | "+"
+factor-op -> "*" | "/"
                     """
-                    |> Result.andThen (runOn "(4+5)*(2-6)/3")
+                    |> Result.andThen (runOn "42+5*(2-6)/3")
                     |> Expect.equal
                         (Ok
                             (Node "expr"
-                                [ Node "primary"
-                                    [ Node "parenthesized"
-                                        [ Node "expr"
-                                            [ Node "primary" [ Node "number" [ Node "digit" [ Terminal "4" ] ] ]
-                                            , Node "op" [ Terminal "+" ]
-                                            , Node "primary" [ Node "number" [ Node "digit" [ Terminal "5" ] ] ]
+                                [ Node "term"
+                                    [ Node "factor"
+                                        [ Node "number"
+                                            [ Node "digit" [ Terminal "4" ]
+                                            , Node "digit" [ Terminal "2" ]
                                             ]
                                         ]
                                     ]
-                                , Node "op" [ Terminal "*" ]
-                                , Node "primary"
-                                    [ Node "parenthesized"
-                                        [ Node "expr"
-                                            [ Node "primary" [ Node "number" [ Node "digit" [ Terminal "2" ] ] ]
-                                            , Node "op" [ Terminal "-" ]
-                                            , Node "primary" [ Node "number" [ Node "digit" [ Terminal "6" ] ] ]
+                                , Node "term-op" [ Terminal "+" ]
+                                , Node "term"
+                                    [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "5" ] ] ]
+                                    , Node "factor-op" [ Terminal "*" ]
+                                    , Node "factor"
+                                        [ Node "parenthesized"
+                                            [ Node "expr"
+                                                [ Node "term" [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "2" ] ] ] ]
+                                                , Node "term-op" [ Terminal "-" ]
+                                                , Node "term" [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "6" ] ] ] ]
+                                                ]
                                             ]
                                         ]
+                                    , Node "factor-op" [ Terminal "/" ]
+                                    , Node "factor" [ Node "number" [ Node "digit" [ Terminal "3" ] ] ]
                                     ]
-                                , Node "op" [ Terminal "/" ]
-                                , Node "primary" [ Node "number" [ Node "digit" [ Terminal "3" ] ] ]
                                 ]
                             )
                         )
@@ -723,26 +728,30 @@ grammarParsing =
             \() ->
                 Grammar.Parser.parse
                     """
-expr -> primary (op primary)*
+expr   -> term (term-op term)*
+term   -> factor (factor-op factor)*
+factor -> number | parenthesized
 
 parenthesized -> <"("> expr <")">
 
-primary -> number | parenthesized
-
 number -> digit+
 digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-op     -> "+" | "-" | "*" | "/"
+
+term-op   -> "-" | "+"
+factor-op -> "*" | "/"
                     """
                     |> Expect.equal
                         (Ok
                             { rules =
                                 Dict.fromList
                                     [ ( "digit", ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] ) )
-                                    , ( "expr", ( Concatenation (Tag "primary") (ZeroOrMore (Concatenation (Tag "op") (Tag "primary"))), [] ) )
+                                    , ( "expr", ( Concatenation (Tag "term") (ZeroOrMore (Concatenation (Tag "term-op") (Tag "term"))), [] ) )
+                                    , ( "factor", ( Alternation (Tag "number") (Tag "parenthesized"), [] ) )
+                                    , ( "factor-op", ( Alternation (Literal "*") (Literal "/"), [] ) )
                                     , ( "number", ( OneOrMore (Tag "digit"), [] ) )
-                                    , ( "op", ( Alternation (Alternation (Alternation (Literal "+") (Literal "-")) (Literal "*")) (Literal "/"), [] ) )
                                     , ( "parenthesized", ( Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")), [] ) )
-                                    , ( "primary", ( Alternation (Tag "number") (Tag "parenthesized"), [] ) )
+                                    , ( "term", ( Concatenation (Tag "factor") (ZeroOrMore (Concatenation (Tag "factor-op") (Tag "factor"))), [] ) )
+                                    , ( "term-op", ( Alternation (Literal "-") (Literal "+"), [] ) )
                                     ]
                             , start = "expr"
                             }
