@@ -1,9 +1,8 @@
 module Grammar.Parser exposing (Context(..), Parser, Problem(..), parse)
 
-import Dict
 import Grammar.Internal as Internal exposing (Grammar)
 import Grammar.Strategy exposing (Strategy(..))
-import NonemptyList exposing (NonemptyList)
+import NonemptyList
 import Parser.Advanced as Parser exposing ((|.), (|=), DeadEnd)
 import Parser.Extra as Parser
 import Pratt.Advanced as Pratt
