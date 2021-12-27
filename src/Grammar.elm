@@ -262,7 +262,7 @@ strategyParser rules strategy =
                                         [ Node tag strategies_ ]
 
                                     RuleHidden ->
-                                        []
+                                        strategies_
                             )
 
         Hidden s ->

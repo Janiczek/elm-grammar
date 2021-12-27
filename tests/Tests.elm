@@ -426,10 +426,10 @@ expr   -> term (term-op term)*
 term   -> factor (factor-op factor)*
 factor -> number | parenthesized
 
-parenthesized -> <"("> expr <")">
+<parenthesized> -> <"("> expr <")">
 
-number -> digit+
-digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+number  -> digit+
+<digit> -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
@@ -441,26 +441,24 @@ factor-op -> "*" | "/"
                                 [ Node "term"
                                     [ Node "factor"
                                         [ Node "number"
-                                            [ Node "digit" [ Terminal "4" ]
-                                            , Node "digit" [ Terminal "2" ]
+                                            [ Terminal "4"
+                                            , Terminal "2"
                                             ]
                                         ]
                                     ]
                                 , Node "term-op" [ Terminal "+" ]
                                 , Node "term"
-                                    [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "5" ] ] ]
+                                    [ Node "factor" [ Node "number" [ Terminal "5" ] ]
                                     , Node "factor-op" [ Terminal "*" ]
                                     , Node "factor"
-                                        [ Node "parenthesized"
-                                            [ Node "expr"
-                                                [ Node "term" [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "2" ] ] ] ]
-                                                , Node "term-op" [ Terminal "-" ]
-                                                , Node "term" [ Node "factor" [ Node "number" [ Node "digit" [ Terminal "6" ] ] ] ]
-                                                ]
+                                        [ Node "expr"
+                                            [ Node "term" [ Node "factor" [ Node "number" [ Terminal "2" ] ] ]
+                                            , Node "term-op" [ Terminal "-" ]
+                                            , Node "term" [ Node "factor" [ Node "number" [ Terminal "6" ] ] ]
                                             ]
                                         ]
                                     , Node "factor-op" [ Terminal "/" ]
-                                    , Node "factor" [ Node "number" [ Node "digit" [ Terminal "3" ] ] ]
+                                    , Node "factor" [ Node "number" [ Terminal "3" ] ]
                                     ]
                                 ]
                             )
@@ -520,7 +518,14 @@ factor-op -> "*" | "/"
                     <greeting> -> "hello" | "hi there" | "greetings"
                     """
                     |> Result.andThen (runOn "hello world")
-                    |> Expect.equal (Ok (Node "example" [ Terminal " world" ]))
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Terminal "hello"
+                                , Terminal " world"
+                                ]
+                            )
+                        )
         , Test.test "start tag ignores the hiding" <|
             \() ->
                 Grammar.fromString
@@ -894,10 +899,10 @@ expr   -> term (term-op term)*
 term   -> factor (factor-op factor)*
 factor -> number | parenthesized
 
-parenthesized -> <"("> expr <")">
+<parenthesized> -> <"("> expr <")">
 
-number -> digit+
-digit  -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+number  -> digit+
+<digit> -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
@@ -907,7 +912,7 @@ factor-op -> "*" | "/"
                             { rules =
                                 Dict.fromList
                                     [ ( "digit"
-                                      , ( Grammar.ruleVisible
+                                      , ( Grammar.ruleHidden
                                         , ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] )
                                         )
                                       )
@@ -932,7 +937,7 @@ factor-op -> "*" | "/"
                                         )
                                       )
                                     , ( "parenthesized"
-                                      , ( Grammar.ruleVisible
+                                      , ( Grammar.ruleHidden
                                         , ( Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")), [] )
                                         )
                                       )
