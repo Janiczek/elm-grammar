@@ -2,9 +2,11 @@
 
 ## Context free grammar parsers
 
-
 # TODO
 
+* the whole documentation
+* mention we can't deal with left recursion
+  * mention a failed experiment with instaparse's GLL in the `gll` branch
 
 ```
 breakfast -> protein ( <" with "> breakfast <" on the side"> )?
@@ -18,6 +20,9 @@ cooked    -> "scrambled" | "poached" | "fried"
 
 bread     -> "toast" | "biscuits" | "English muffin" 
 ```
+
+* TODO the arithmetic expression example?
+* TODO the Lox language example?
 
 ### Implemented:
 
