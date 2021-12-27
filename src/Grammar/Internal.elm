@@ -1,5 +1,6 @@
 module Grammar.Internal exposing
     ( Grammar
+    , RuleVisibility(..)
     , fromNonemptyRules
     , fromRules
     )
@@ -12,18 +13,23 @@ import NonemptyList exposing (NonemptyList)
 
 type alias Grammar =
     { start : String
-    , rules : Dict String (NonemptyList Strategy)
+    , rules : Dict String ( RuleVisibility, NonemptyList Strategy )
     }
 
 
-fromRules : List ( String, Strategy ) -> Maybe Grammar
+type RuleVisibility
+    = RuleVisible
+    | RuleHidden
+
+
+fromRules : List ( String, ( RuleVisibility, Strategy ) ) -> Maybe Grammar
 fromRules rules =
     rules
         |> NonemptyList.fromList
         |> Maybe.map fromNonemptyRules
 
 
-fromNonemptyRules : NonemptyList ( String, Strategy ) -> Grammar
+fromNonemptyRules : NonemptyList ( String, ( RuleVisibility, Strategy ) ) -> Grammar
 fromNonemptyRules rules =
     let
         start : String
@@ -32,19 +38,29 @@ fromNonemptyRules rules =
                 |> NonemptyList.head
                 |> Tuple.first
 
-        groupedRules : List ( String, NonemptyList Strategy )
+        groupedRules : List ( String, ( RuleVisibility, NonemptyList Strategy ) )
         groupedRules =
             rules
                 |> NonemptyList.toList
                 |> List.sortBy Tuple.first
                 |> List.gatherEqualsBy Tuple.first
                 |> List.map
-                    (\( ( tag_, strategy1 ), grouped_ ) ->
+                    (\grouped ->
                         let
-                            restOfStrategies =
-                                List.map Tuple.second grouped_
+                            ( tag, _ ) =
+                                NonemptyList.head grouped
+
+                            ruleVisibility =
+                                if NonemptyList.any (\( _, ( rv, _ ) ) -> rv == RuleHidden) grouped then
+                                    RuleHidden
+
+                                else
+                                    RuleVisible
+
+                            strategies =
+                                NonemptyList.map (\( _, ( _, strategy ) ) -> strategy) grouped
                         in
-                        ( tag_, NonemptyList.fromCons strategy1 restOfStrategies )
+                        ( tag, ( ruleVisibility, strategies ) )
                     )
     in
     { start = start

@@ -24,25 +24,35 @@ bread     -> "toast" | "biscuits" | "English muffin"
 * TODO the arithmetic expression example?
 * TODO the Lox language example?
 
+* TODO: when running
+```
+<foo> -> "bar"
+foo -> "baz"
+```
+on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo" tag.
+
+* TODO: mention that it's enough to only hide one tag to hide all its occurences
+* TODO: mention that the starting tag cannot be hidden
+
 ### Implemented:
 
 ```
-- Literal:       s -> "a"
-- Tag:           s -> a
-- Concatenation: s -> a b
-- Alternation:   s -> a | b
-- Grouping:      s -> (a)
-- Hiding:        s -> <a>
-- Optional:      s -> a?
-- Zero or more:  s -> a*
-- One or more:   s -> a+
-- Lookahead:     s -> &a
-- Comment:       s -> (* hello *) "world"
+- Literal:       s  -> "a"
+- Tag:           s  -> a
+- Concatenation: s  -> a b
+- Alternation:   s  -> a | b
+- Grouping:      s  -> (a)
+- Hiding:        s  -> <a>
+- Optional:      s  -> a?
+- Zero or more:  s  -> a*
+- One or more:   s  -> a+
+- Lookahead:     s  -> &a
+- Comment:       s  -> (* hello *) "world"
+- Hiding tags:  <s> -> "abc"
 ```
 
 ### TODO:
 
 ```
 - Regex:         s  -> /"[^"]*"/
-- Hiding tags:  <s> -> "abc"
 ```

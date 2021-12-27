@@ -512,6 +512,52 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "world")
                     |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "hidden tag doesn't show up in the structure" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> greeting " world"
+                    <greeting> -> "hello" | "hi there" | "greetings"
+                    """
+                    |> Result.andThen (runOn "hello world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal " world" ]))
+        , Test.test "start tag ignores the hiding" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    <example> -> "hello" "world"
+                    """
+                    |> Result.andThen (runOn "helloworld")
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Terminal "hello"
+                                , Terminal "world"
+                                ]
+                            )
+                        )
+        , Test.test "start tag ignores the hiding (custom start)" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "hello" "world"
+                    <other> -> "hi" "there"
+                    """
+                    |> Result.andThen
+                        (runWithOn
+                            { partial = False
+                            , start = Just "other"
+                            }
+                            "hithere"
+                        )
+                    |> Expect.equal
+                        (Ok
+                            (Node "other"
+                                [ Terminal "hi"
+                                , Terminal "there"
+                                ]
+                            )
+                        )
         ]
 
 
@@ -527,7 +573,14 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "bread"
-                            , rules = Dict.fromList [ ( "bread", ( Literal "toast", [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "toast", [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         , Test.test "two terminals for same tag" <|
@@ -543,8 +596,10 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Literal "toast"
-                                        , [ Literal "bagel" ]
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "toast"
+                                          , [ Literal "bagel" ]
+                                          )
                                         )
                                       )
                                     ]
@@ -562,8 +617,16 @@ grammarParsing =
                             { start = "bread"
                             , rules =
                                 Dict.fromList
-                                    [ ( "bread", ( Literal "toast", [] ) )
-                                    , ( "breakfast", ( Tag "bread", [] ) )
+                                    [ ( "bread"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "toast", [] )
+                                        )
+                                      )
+                                    , ( "breakfast"
+                                      , ( Grammar.ruleVisible
+                                        , ( Tag "bread", [] )
+                                        )
+                                      )
                                     ]
                             }
                         )
@@ -579,12 +642,18 @@ grammarParsing =
                             { start = "bread"
                             , rules =
                                 Dict.fromList
-                                    [ ( "bread", ( Literal "toast", [] ) )
+                                    [ ( "bread"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "toast", [] )
+                                        )
+                                      )
                                     , ( "breakfast"
-                                      , ( Concatenation
-                                            (Literal "breakfast")
-                                            (Tag "bread")
-                                        , []
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation
+                                                (Literal "breakfast")
+                                                (Tag "bread")
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -602,10 +671,12 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Alternation
-                                            (Literal "toast")
-                                            (Literal "bagel")
-                                        , []
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation
+                                                (Literal "toast")
+                                                (Literal "bagel")
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -623,13 +694,15 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Alternation
-                                            (Concatenation
-                                                (Literal "crispy")
-                                                (Literal "toast")
-                                            )
-                                            (Literal "bagel")
-                                        , []
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation
+                                                (Concatenation
+                                                    (Literal "crispy")
+                                                    (Literal "toast")
+                                                )
+                                                (Literal "bagel")
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -647,10 +720,12 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "bread"
-                                      , ( Concatenation
-                                            (Hidden (Literal "crispy"))
-                                            (Literal "toast")
-                                        , []
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation
+                                                (Hidden (Literal "crispy"))
+                                                (Literal "toast")
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -668,13 +743,15 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "s"
-                                      , ( Concatenation
-                                            (Alternation
-                                                (Literal "a")
-                                                (Literal "b")
-                                            )
-                                            (Literal "c")
-                                        , []
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation
+                                                (Alternation
+                                                    (Literal "a")
+                                                    (Literal "b")
+                                                )
+                                                (Literal "c")
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -689,7 +766,14 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( OneOrMore (Literal "a"), [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Grammar.ruleVisible
+                                        , ( OneOrMore (Literal "a"), [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         , Test.test "zero or more" <|
@@ -701,7 +785,14 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( ZeroOrMore (Literal "a"), [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Grammar.ruleVisible
+                                        , ( ZeroOrMore (Literal "a"), [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         , Test.test "optional" <|
@@ -713,7 +804,14 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( Optional (Literal "a"), [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Grammar.ruleVisible
+                                        , ( Optional (Literal "a"), [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         , Test.test "lookahead" <|
@@ -725,7 +823,14 @@ grammarParsing =
                     |> Expect.equal
                         (Ok
                             { start = "s"
-                            , rules = Dict.fromList [ ( "s", ( Lookahead (Literal "ab"), [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Grammar.ruleVisible
+                                        , ( Lookahead (Literal "ab"), [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         , Test.test "lookahead 2" <|
@@ -740,15 +845,17 @@ grammarParsing =
                             , rules =
                                 Dict.fromList
                                     [ ( "s"
-                                      , ( Concatenation
-                                            (Lookahead (Literal "ab"))
-                                            (OneOrMore
-                                                (Alternation
-                                                    (Literal "a")
-                                                    (Literal "b")
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation
+                                                (Lookahead (Literal "ab"))
+                                                (OneOrMore
+                                                    (Alternation
+                                                        (Literal "a")
+                                                        (Literal "b")
+                                                    )
                                                 )
-                                            )
-                                        , []
+                                          , []
+                                          )
                                         )
                                       )
                                     ]
@@ -766,8 +873,16 @@ grammarParsing =
                             { start = "with-hyphen"
                             , rules =
                                 Dict.fromList
-                                    [ ( "with-hyphen", ( Literal "A", [] ) )
-                                    , ( "with_underscore", ( Literal "B", [] ) )
+                                    [ ( "with-hyphen"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "A", [] )
+                                        )
+                                      )
+                                    , ( "with_underscore"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "B", [] )
+                                        )
+                                      )
                                     ]
                             }
                         )
@@ -791,14 +906,46 @@ factor-op -> "*" | "/"
                         (Ok
                             { rules =
                                 Dict.fromList
-                                    [ ( "digit", ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] ) )
-                                    , ( "expr", ( Concatenation (Tag "term") (ZeroOrMore (Concatenation (Tag "term-op") (Tag "term"))), [] ) )
-                                    , ( "factor", ( Alternation (Tag "number") (Tag "parenthesized"), [] ) )
-                                    , ( "factor-op", ( Alternation (Literal "*") (Literal "/"), [] ) )
-                                    , ( "number", ( OneOrMore (Tag "digit"), [] ) )
-                                    , ( "parenthesized", ( Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")), [] ) )
-                                    , ( "term", ( Concatenation (Tag "factor") (ZeroOrMore (Concatenation (Tag "factor-op") (Tag "factor"))), [] ) )
-                                    , ( "term-op", ( Alternation (Literal "-") (Literal "+"), [] ) )
+                                    [ ( "digit"
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] )
+                                        )
+                                      )
+                                    , ( "expr"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation (Tag "term") (ZeroOrMore (Concatenation (Tag "term-op") (Tag "term"))), [] )
+                                        )
+                                      )
+                                    , ( "factor"
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation (Tag "number") (Tag "parenthesized"), [] )
+                                        )
+                                      )
+                                    , ( "factor-op"
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation (Literal "*") (Literal "/"), [] )
+                                        )
+                                      )
+                                    , ( "number"
+                                      , ( Grammar.ruleVisible
+                                        , ( OneOrMore (Tag "digit"), [] )
+                                        )
+                                      )
+                                    , ( "parenthesized"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation (Concatenation (Hidden (Literal "(")) (Tag "expr")) (Hidden (Literal ")")), [] )
+                                        )
+                                      )
+                                    , ( "term"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation (Tag "factor") (ZeroOrMore (Concatenation (Tag "factor-op") (Tag "factor"))), [] )
+                                        )
+                                      )
+                                    , ( "term-op"
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation (Literal "-") (Literal "+"), [] )
+                                        )
+                                      )
                                     ]
                             , start = "expr"
                             }
@@ -812,7 +959,39 @@ factor-op -> "*" | "/"
                     |> Expect.equal
                         (Ok
                             { start = "example"
-                            , rules = Dict.fromList [ ( "example", ( Literal "world", [] ) ) ]
+                            , rules =
+                                Dict.fromList
+                                    [ ( "example"
+                                      , ( Grammar.ruleVisible
+                                        , ( Literal "world", [] )
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "hidden tag is remembered" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    example -> greeting " world"
+                    <greeting> -> "hello" | "hi there" | "greetings"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "example"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "example"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation (Tag "greeting") (Literal " world"), [] )
+                                        )
+                                      )
+                                    , ( "greeting"
+                                      , ( Grammar.ruleHidden
+                                        , ( Alternation (Alternation (Literal "hello") (Literal "hi there")) (Literal "greetings"), [] )
+                                        )
+                                      )
+                                    ]
                             }
                         )
         ]

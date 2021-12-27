@@ -1,9 +1,11 @@
 module NonemptyList exposing
     ( NonemptyList
+    , any
     , foldl
     , fromCons
     , fromList
     , head
+    , map
     , toList
     )
 
@@ -40,3 +42,13 @@ foldl fn init ( x, xs ) =
 head : NonemptyList a -> a
 head ( x, _ ) =
     x
+
+
+map : (a -> b) -> NonemptyList a -> NonemptyList b
+map fn ( x, xs ) =
+    ( fn x, List.map fn xs )
+
+
+any : (a -> Bool) -> NonemptyList a -> Bool
+any fn ( x, xs ) =
+    fn x || List.any fn xs

@@ -1,6 +1,6 @@
 module Grammar.Parser exposing (Context(..), Parser, Problem(..), parse)
 
-import Grammar.Internal as Internal exposing (Grammar)
+import Grammar.Internal as Internal exposing (Grammar, RuleVisibility(..))
 import Grammar.Strategy exposing (Strategy(..))
 import NonemptyList
 import Parser.Advanced as Parser exposing ((|.), (|=), DeadEnd)
@@ -16,6 +16,7 @@ type alias Parser a =
 type Context
     = InLiteral
     | InHidden
+    | InTagAndRuleVisibility
     | InGrouped
     | InTag
     | InStrategy
@@ -125,11 +126,14 @@ comment =
         |. Parser.token closingCommentBrace
 
 
-rule : Parser ( String, Strategy )
+rule : Parser ( String, ( RuleVisibility, Strategy ) )
 rule =
-    Parser.succeed Tuple.pair
+    Parser.succeed
+        (\( tag_, ruleVisibility ) strategy_ ->
+            ( tag_, ( ruleVisibility, strategy_ ) )
+        )
         |. spacesOrComment { allowNewlines = True }
-        |= tag
+        |= tagAndRuleVisibility
         |. spacesOrComment { allowNewlines = False }
         |. Parser.token (Parser.Token "->" ExpectingArrow)
         |. spacesOrComment { allowNewlines = False }
@@ -211,6 +215,21 @@ literalHelp revStrs =
 isUninterestingToLiteral : Char -> Bool
 isUninterestingToLiteral char =
     char /= '"'
+
+
+tagAndRuleVisibility : Parser ( String, RuleVisibility )
+tagAndRuleVisibility =
+    Parser.oneOf
+        [ Parser.succeed (\tag_ -> ( tag_, RuleVisible ))
+            |= tag
+        , Parser.succeed (\tag_ -> ( tag_, RuleHidden ))
+            |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
+            |. spacesOrComment { allowNewlines = False }
+            |= tag
+            |. spacesOrComment { allowNewlines = False }
+            |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
+        ]
+        |> Parser.inContext InTagAndRuleVisibility
 
 
 tag : Parser String

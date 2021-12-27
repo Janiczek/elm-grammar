@@ -1,5 +1,6 @@
 module Grammar exposing
     ( Parser, fromString, fromList, fromNonemptyList, never
+    , RuleVisibility, ruleVisible, ruleHidden
     , Structure(..), run, runWith, toDot
     , Config, defaultConfig
     , Error(..)
@@ -8,6 +9,8 @@ module Grammar exposing
 {-|
 
 @docs Parser, fromString, fromList, fromNonemptyList, never
+
+@docs RuleVisibility, ruleVisible, ruleHidden
 
 @docs Structure, run, runWith, toDot
 
@@ -18,7 +21,7 @@ module Grammar exposing
 -}
 
 import Dict exposing (Dict)
-import Grammar.Internal as Internal exposing (Grammar)
+import Grammar.Internal as Internal exposing (Grammar, RuleVisibility(..))
 import Grammar.Parser exposing (Context, Problem(..))
 import Grammar.Strategy exposing (Strategy(..))
 import Graph
@@ -30,7 +33,6 @@ import Parser.Extra as Parser
 
 
 
--- TODO visualize (toDOT)
 -- TODO generate values
 -- TODO toString
 -- TODO expose Grammar.Parser.parse somehow?
@@ -149,7 +151,7 @@ fromString grammarString =
 
 {-| You can create your own grammar programatically instead of as a string: see the `Strategy` type. This is a way to compile it to a parser that you can then run.
 -}
-fromList : List ( String, Strategy ) -> Result Error Parser
+fromList : List ( String, ( RuleVisibility, Strategy ) ) -> Result Error Parser
 fromList rules =
     rules
         |> Internal.fromRules
@@ -162,7 +164,7 @@ fromList rules =
 A non-empty list alternative to [`Grammar.fromList`](Grammar#fromList) that guarantees the parser will successfully compile.
 
 -}
-fromNonemptyList : NonemptyList ( String, Strategy ) -> Parser
+fromNonemptyList : NonemptyList ( String, ( RuleVisibility, Strategy ) ) -> Parser
 fromNonemptyList rules =
     rules
         |> Internal.fromNonemptyRules
@@ -192,15 +194,24 @@ toElmParser config grammar =
         realStart =
             Maybe.withDefault grammar.start config.start
 
+        -- starting tag cannot be hidden
+        sanitizedRules : Dict String ( RuleVisibility, NonemptyList Strategy )
+        sanitizedRules =
+            Dict.update
+                realStart
+                (Maybe.map (\( _, strategies ) -> ( RuleVisible, strategies )))
+                grammar.rules
+
+        parserFromGrammar : Grammar.Parser.Parser Structure
         parserFromGrammar =
-            case Dict.get realStart grammar.rules of
+            case Dict.get realStart sanitizedRules of
                 Nothing ->
                     Parser.problem (CouldntFindStartingRuleOnLeftSide realStart)
 
-                Just strategies ->
+                Just ( _, strategies ) ->
                     strategies
                         |> NonemptyList.toList
-                        |> List.map (strategyParser grammar.rules)
+                        |> List.map (strategyParser sanitizedRules)
                         |> Parser.oneOf
                         |> Parser.map (Node realStart)
     in
@@ -213,7 +224,7 @@ toElmParser config grammar =
             |. Parser.end ExpectingEndOfString
 
 
-strategyParser : Dict String (NonemptyList Strategy) -> Strategy -> Grammar.Parser.Parser (List Structure)
+strategyParser : Dict String ( RuleVisibility, NonemptyList Strategy ) -> Strategy -> Grammar.Parser.Parser (List Structure)
 strategyParser rules strategy =
     let
         strategyParser_ s =
@@ -235,16 +246,24 @@ strategyParser rules strategy =
                 |. Parser.token (Parser.Token literal (ExpectingLiteral literal))
 
         Tag tag ->
-            case Dict.get tag (Debug.log "rules" rules) of
+            case Dict.get tag rules of
                 Nothing ->
                     Parser.problem (CouldntFindRuleOnLeftSide tag)
 
-                Just strategies ->
+                Just ( ruleVisibility, strategies ) ->
                     strategies
                         |> NonemptyList.toList
                         |> List.map strategyParser_
                         |> Parser.oneOf
-                        |> Parser.map (\strategies_ -> [ Node tag strategies_ ])
+                        |> Parser.map
+                            (\strategies_ ->
+                                case ruleVisibility of
+                                    RuleVisible ->
+                                        [ Node tag strategies_ ]
+
+                                    RuleHidden ->
+                                        []
+                            )
 
         Hidden s ->
             Parser.succeed []
@@ -343,3 +362,17 @@ toDot structure =
             graphStyles
             Just
             (\_ -> Nothing)
+
+
+type alias RuleVisibility =
+    Internal.RuleVisibility
+
+
+ruleVisible : RuleVisibility
+ruleVisible =
+    RuleVisible
+
+
+ruleHidden : RuleVisibility
+ruleHidden =
+    RuleHidden

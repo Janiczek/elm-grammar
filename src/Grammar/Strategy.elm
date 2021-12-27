@@ -17,19 +17,22 @@ Here are all the combinators:
      - Tag:           a
      - Concatenation: a b
      - Alternation:   a | b
-     - Grouping:      (a)                    (not an actual constructor)
      - Hidden:        <a>
      - Optional:      a?
      - ZeroOrMore:    a*
      - OneOrMore:     a+
      - Lookahead:     &a
-     - Comment:       (* hello *) "world"    (not an actual constructor)
+
+Parts of the syntax that don't show up as a Strategy constructor:
+
+     - Grouping:      (a)
+     - Comment:       (* hello *) "world"
+     - Hiding tags:   <s> -> "abc"
 
 -}
 type Strategy
     = {- TODO:
          - Regex:         s  -> /"[^"]*"/
-         - Hiding tags:  <s> -> "abc"
       -}
       Literal String
     | Tag String
