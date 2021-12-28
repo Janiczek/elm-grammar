@@ -302,9 +302,7 @@ strategyParser rules strategy =
 
 graphStyles : Graph.DOT.Styles
 graphStyles =
-    { defaultStyles
-        | node = """fillcolor="#eeeeee",color="#bbbbbb",style=filled"""
-    }
+    { defaultStyles | node = """color="#bbbbbb", style=filled""" }
 
 
 toDot : Structure -> String
@@ -313,20 +311,24 @@ toDot structure =
         toNodesAndEdges :
             Int
             -> List ( Structure, Maybe Int )
-            -> ( List (Graph.Node String), List (Graph.Edge ()) )
-            -> ( List (Graph.Node String), List (Graph.Edge ()) )
+            -> ( List (Graph.Node Structure), List (Graph.Edge ()) )
+            -> ( List (Graph.Node Structure), List (Graph.Edge ()) )
         toNodesAndEdges nextId todos ( nodes, edges ) =
             case todos of
                 [] ->
                     ( nodes, edges )
 
                 ( s, parentId ) :: restOfTodos ->
+                    let
+                        nextNodes =
+                            Graph.Node nextId s :: nodes
+                    in
                     case s of
                         Terminal terminal ->
                             toNodesAndEdges
                                 (nextId + 1)
                                 restOfTodos
-                                ( Graph.Node nextId terminal :: nodes
+                                ( nextNodes
                                 , case parentId of
                                     Nothing ->
                                         edges
@@ -344,7 +346,7 @@ toDot structure =
                             toNodesAndEdges
                                 (nextId + 1)
                                 (restOfTodos ++ newTodos)
-                                ( Graph.Node nextId tag :: nodes
+                                ( nextNodes
                                 , case parentId of
                                     Nothing ->
                                         edges
@@ -358,10 +360,24 @@ toDot structure =
         [ ( structure, Nothing ) ]
         ( [], [] )
         |> (\( nodes, edges ) -> Graph.fromNodesAndEdges nodes edges)
-        |> Graph.DOT.outputWithStyles
+        |> Graph.DOT.outputWithStylesAndAttributes
             graphStyles
-            Just
-            (\_ -> Nothing)
+            (\n ->
+                let
+                    ( fillcolor, label ) =
+                        case n of
+                            Node tag _ ->
+                                ( "#eeeeee", tag )
+
+                            Terminal terminal ->
+                                ( "#cceeff", terminal )
+                in
+                Dict.fromList
+                    [ ( "fillcolor", fillcolor )
+                    , ( "label", label )
+                    ]
+            )
+            (\_ -> Dict.empty)
 
 
 type alias RuleVisibility =
