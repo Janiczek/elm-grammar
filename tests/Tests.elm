@@ -792,6 +792,29 @@ grammarParsing =
                                     ]
                             }
                         )
+        , Test.test "alternation with /" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    bread -> "toast" / "bagel"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "bread"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "bread"
+                                      , ( Grammar.ruleVisible
+                                        , ( Alternation
+                                                (Literal "toast")
+                                                (Literal "bagel")
+                                          , []
+                                          )
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
         , Test.test "concatenation and alternation are grouped correctly" <|
             \() ->
                 Grammar.Parser.parse

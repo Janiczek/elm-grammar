@@ -38,6 +38,7 @@ type Problem
     | ExpectingLeftParenthesis
     | ExpectingRightParenthesis
     | ExpectingPipe
+    | ExpectingSolidus
     | ExpectingArrow
     | ExpectingColonColonEquals
     | ExpectingNewline
@@ -184,7 +185,7 @@ strategy =
             , Pratt.literal <| Parser.map Regex regex
             ]
         , andThenOneOf =
-            [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
+            [ Pratt.infixLeft 1 alternationToken Alternation
             , Pratt.infixLeft 2 (spacesOrMultiComment { allowNewlines = False }) Concatenation
             , Pratt.postfix 4 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
             , Pratt.postfix 5 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
@@ -193,6 +194,14 @@ strategy =
         , spaces = spacesOrMultiComment { allowNewlines = False }
         }
         |> Parser.inContext InStrategy
+
+
+alternationToken : Parser ()
+alternationToken =
+    Parser.oneOf
+        [ Parser.token (Parser.Token "|" ExpectingPipe)
+        , Parser.token (Parser.Token "/" ExpectingSolidus)
+        ]
 
 
 hidden : Pratt.Config Context Problem Strategy -> Parser Strategy
