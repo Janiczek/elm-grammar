@@ -456,23 +456,6 @@ factor-op -> "*" | "/"
                                 ]
                             )
                         )
-        , Test.test "Different arithmetic example" <|
-            \() ->
-                Grammar.fromString
-                    """
-expr -> add | sub | mul | div | bottom
-
-<bottom> -> number | parenthesized
-<number> -> /\\d+/
-<parenthesized> -> <"("> expr <")">
-
-add -> bottom <"+"> bottom
-sub -> bottom <"-"> bottom
-mul -> bottom <"*"> bottom
-div -> bottom <"/"> bottom
-                    """
-                    |> Result.andThen (runOn "42+5*(2-6)/3")
-                    |> Expect.equal (Ok (Terminal "TODO"))
         , Test.test "comment before tag" <|
             \() ->
                 Grammar.fromString
