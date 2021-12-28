@@ -345,7 +345,7 @@ toDot structure =
                             Graph.Node nextId s :: nodes
                     in
                     case s of
-                        Terminal terminal ->
+                        Terminal _ ->
                             toNodesAndEdges
                                 (nextId + 1)
                                 restOfTodos
@@ -358,7 +358,7 @@ toDot structure =
                                         Graph.Edge parentId_ nextId () :: edges
                                 )
 
-                        Node tag structures ->
+                        Node _ structures ->
                             let
                                 newTodos =
                                     structures
