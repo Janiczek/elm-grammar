@@ -116,6 +116,38 @@ usage =
                     """
                     |> Result.andThen (runOn "bagel")
                     |> Expect.equal (Ok (Node "bread" [ Terminal "bagel" ]))
+        , Test.test "behaviour of concat vs alternation (1)" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "a" "b" | "c" "d"
+                    """
+                    |> Result.andThen (runOn "ab")
+                    |> Expect.ok
+        , Test.test "behaviour of concat vs alternation (2)" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "a" "b" | "c" "d"
+                    """
+                    |> Result.andThen (runOn "ac")
+                    |> Expect.err
+        , Test.test "behaviour of concat vs alternation (3)" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "a" "b" | "c" "d"
+                    """
+                    |> Result.andThen (runOn "bd")
+                    |> Expect.err
+        , Test.test "behaviour of concat vs alternation (4)" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> "a" "b" | "c" "d"
+                    """
+                    |> Result.andThen (runOn "cd")
+                    |> Expect.ok
         , Test.test "hidden: doesn't show up" <|
             \() ->
                 Grammar.fromString
