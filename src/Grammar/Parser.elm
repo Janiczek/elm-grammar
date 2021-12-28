@@ -56,6 +56,7 @@ type Problem
     | ExpectingOpeningRegexSlash
     | ExpectingClosingRegexSlash
     | ExpectingSemicolon
+    | ExpectingDoubleDash
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -66,18 +67,18 @@ parse string =
 parser : Parser Grammar
 parser =
     Parser.succeed Internal.fromNonemptyRules
-        |. spacesOrComment { allowNewlines = True }
+        |. spacesOrMultiComment { allowNewlines = True }
         |= (Parser.sequence
                 { start = empty
                 , separator = Parser.Token "\n" ExpectingNewline
                 , end = empty
-                , spaces = spacesOrComment { allowNewlines = False }
+                , spaces = spacesOrMultiComment { allowNewlines = False }
                 , item = rule
                 , trailing = Parser.Optional
                 }
                 |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe RuleListWasEmpty)
            )
-        |. spacesOrComment { allowNewlines = True }
+        |. spacesOrMultiComment { allowNewlines = True }
 
 
 empty : Parser.Token Problem
@@ -85,8 +86,8 @@ empty =
     Parser.Token "" ShouldntHappen
 
 
-spacesOrComment : { allowNewlines : Bool } -> Parser ()
-spacesOrComment { allowNewlines } =
+spacesOrMultiComment : { allowNewlines : Bool } -> Parser ()
+spacesOrMultiComment { allowNewlines } =
     let
         chompFn : Char -> Bool
         chompFn =
@@ -140,14 +141,27 @@ rule =
         (\( tag_, ruleVisibility ) strategy_ ->
             ( tag_, ( ruleVisibility, strategy_ ) )
         )
-        |. spacesOrComment { allowNewlines = True }
+        |. spacesOrMultiComment { allowNewlines = True }
         |= tagAndRuleVisibility
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |. arrowLike
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |= strategy
-        |. Parser.many (Parser.token (Parser.Token ";" ExpectingSemicolon))
+        |. lineComment
         |> Parser.inContext InRule
+
+
+lineComment : Parser ()
+lineComment =
+    Parser.oneOf
+        [ Parser.succeed ()
+            |. Parser.oneOf
+                [ Parser.token (Parser.Token ";" ExpectingSemicolon)
+                , Parser.token (Parser.Token "--" ExpectingDoubleDash)
+                ]
+            |. Parser.chompWhile (\c -> c /= '\n')
+        , Parser.succeed ()
+        ]
 
 
 arrowLike : Parser ()
@@ -171,12 +185,12 @@ strategy =
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
-            , Pratt.infixLeft 2 (spacesOrComment { allowNewlines = False }) Concatenation
+            , Pratt.infixLeft 2 (spacesOrMultiComment { allowNewlines = False }) Concatenation
             , Pratt.postfix 4 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
             , Pratt.postfix 5 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
             , Pratt.postfix 6 (Parser.token (Parser.Token "?" ExpectingQuestionMark)) Optional
             ]
-        , spaces = spacesOrComment { allowNewlines = False }
+        , spaces = spacesOrMultiComment { allowNewlines = False }
         }
         |> Parser.inContext InStrategy
 
@@ -185,9 +199,9 @@ hidden : Pratt.Config Context Problem Strategy -> Parser Strategy
 hidden config =
     Parser.succeed Hidden
         |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         |> Parser.inContext InHidden
 
@@ -196,9 +210,9 @@ grouped : Pratt.Config Context Problem Strategy -> Parser Strategy
 grouped config =
     Parser.succeed identity
         |. Parser.token (Parser.Token "(" ExpectingLeftParenthesis)
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOrComment { allowNewlines = False }
+        |. spacesOrMultiComment { allowNewlines = False }
         |. Parser.token (Parser.Token ")" ExpectingRightParenthesis)
         |> Parser.inContext InGrouped
 
@@ -275,9 +289,9 @@ tagAndRuleVisibility =
             |= tag
         , Parser.succeed (\tag_ -> ( tag_, RuleHidden ))
             |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
-            |. spacesOrComment { allowNewlines = False }
+            |. spacesOrMultiComment { allowNewlines = False }
             |= tag
-            |. spacesOrComment { allowNewlines = False }
+            |. spacesOrMultiComment { allowNewlines = False }
             |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         ]
         |> Parser.inContext InTagAndRuleVisibility

@@ -535,6 +535,38 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "world")
                     |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "-- as line comment" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> greeting "world" -- whatever!
+                    greeting -> "hello "
+                    """
+                    |> Result.andThen (runOn "hello world")
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Node "greeting" [ Terminal "hello " ]
+                                , Terminal "world"
+                                ]
+                            )
+                        )
+        , Test.test "; as line comment" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> greeting "world" ; whatever!
+                    greeting -> "hello "
+                    """
+                    |> Result.andThen (runOn "hello world")
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Node "greeting" [ Terminal "hello " ]
+                                , Terminal "world"
+                                ]
+                            )
+                        )
         , Test.test "hidden tag doesn't show up in the structure" <|
             \() ->
                 Grammar.fromString

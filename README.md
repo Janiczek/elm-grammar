@@ -36,6 +36,8 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 
 * TODO: mention the ::= synonym for ->
 * TODO: mention the ; optional ending character
+* TODO: mention that ; also serves as a line comment
+* TODO: mention -- line comments
 
 ### Implemented:
 
