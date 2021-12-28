@@ -1,7 +1,7 @@
-module Parser.Extra exposing (fromMaybe, many, some)
+module Parser.Extra exposing (advanceChars, fromMaybe, many, some)
 
 import NonemptyList exposing (NonemptyList)
-import Parser.Advanced as Parser exposing ((|=), Parser, Step(..))
+import Parser.Advanced as Parser exposing ((|.), (|=), Parser, Step(..))
 
 
 fromMaybe : x -> Maybe a -> Parser c x a
@@ -38,3 +38,19 @@ manyHelp p vs =
         , Parser.succeed ()
             |> Parser.map (\_ -> Done (List.reverse vs))
         ]
+
+
+advanceChars : Int -> x -> Parser c x a -> Parser c x a
+advanceChars n impossibleError parser =
+    let
+        go : Int -> Parser c x a -> Parser c x a
+        go todo accParser =
+            if todo <= 0 then
+                accParser
+
+            else
+                go
+                    (todo - 1)
+                    (accParser |. Parser.chompIf (\_ -> True) impossibleError)
+    in
+    go n parser

@@ -30,6 +30,7 @@ import List.ExtraExtra as List
 import NonemptyList exposing (NonemptyList)
 import Parser.Advanced as Parser exposing ((|.), (|=))
 import Parser.Extra as Parser
+import Regex
 
 
 
@@ -298,6 +299,26 @@ strategyParser rules strategy =
                                         Parser.succeed ()
                             )
                    )
+
+        Regex regex ->
+            Parser.succeed
+                (\offset source ->
+                    case
+                        source
+                            |> String.dropLeft offset
+                            |> Regex.findAtMost 1 regex
+                            |> List.head
+                    of
+                        Nothing ->
+                            Parser.problem ExpectingRegexMatch
+
+                        Just { match } ->
+                            Parser.succeed [ Terminal match ]
+                                |> Parser.advanceChars (String.length match) ShouldntHappen
+                )
+                |= Parser.getOffset
+                |= Parser.getSource
+                |> Parser.andThen identity
 
 
 graphStyles : Graph.DOT.Styles

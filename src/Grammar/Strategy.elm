@@ -10,10 +10,13 @@ Here are all the combinators:
 
 -}
 
+import Regex exposing (Regex)
+
 
 {-| And here's how they correspond to the syntax from `Grammar.fromString`:
 
      - Literal:       "a"
+     - Regex:         /\d+/
      - Tag:           a
      - Concatenation: a b
      - Alternation:   a | b
@@ -31,10 +34,8 @@ Parts of the syntax that don't show up as a Strategy constructor:
 
 -}
 type Strategy
-    = {- TODO:
-         - Regex:         s  -> /"[^"]*"/
-      -}
-      Literal String
+    = Literal String
+    | Regex Regex
     | Tag String
     | Concatenation Strategy Strategy
     | Alternation Strategy Strategy

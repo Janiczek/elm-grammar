@@ -38,6 +38,7 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 
 ```
 - Literal:       s  -> "a"
+- Regex:         s  -> /\d+/
 - Tag:           s  -> a
 - Concatenation: s  -> a b
 - Alternation:   s  -> a | b
@@ -49,10 +50,4 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 - Lookahead:     s  -> &a
 - Comment:       s  -> (* hello *) "world"
 - Hiding tags:  <s> -> "abc"
-```
-
-### TODO:
-
-```
-- Regex:         s  -> /"[^"]*"/
 ```

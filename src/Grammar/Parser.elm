@@ -6,6 +6,7 @@ import NonemptyList
 import Parser.Advanced as Parser exposing ((|.), (|=), DeadEnd)
 import Parser.Extra as Parser
 import Pratt.Advanced as Pratt
+import Regex exposing (Regex)
 import Set
 
 
@@ -21,6 +22,7 @@ type Context
     | InTag
     | InStrategy
     | InRule
+    | InRegex
 
 
 type Problem
@@ -48,6 +50,10 @@ type Problem
     | ExpectingOpeningCommentBrace
     | ExpectingClosingCommentBrace
     | ExpectingNonemptySpaces
+    | ExpectingRegexMatch
+    | ExpectingValidRegex
+    | ExpectingOpeningRegexSlash
+    | ExpectingClosingRegexSlash
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -150,6 +156,7 @@ strategy =
             , Pratt.prefix 3 (Parser.token (Parser.Token "&" ExpectingAmpersand)) Lookahead
             , Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
+            , Pratt.literal <| Parser.map Regex regex
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 1 (Parser.token (Parser.Token "|" ExpectingPipe)) Alternation
@@ -215,6 +222,39 @@ literalHelp revStrs =
 isUninterestingToLiteral : Char -> Bool
 isUninterestingToLiteral char =
     char /= '"'
+
+
+regex : Parser Regex
+regex =
+    Parser.succeed (\regex_ -> Regex.fromString ("^" ++ regex_))
+        |. Parser.token (Parser.Token "/" ExpectingOpeningRegexSlash)
+        |= Parser.loop [] regexHelp
+        |> Parser.andThen (Parser.fromMaybe ExpectingValidRegex)
+        |> Parser.inContext InRegex
+
+
+regexHelp : List String -> Parser (Parser.Step (List String) String)
+regexHelp revStrs =
+    Parser.oneOf
+        [ Parser.token (Parser.Token "/" ExpectingClosingRegexSlash)
+            |> Parser.map (\_ -> Parser.Done (String.join "" (List.reverse revStrs)))
+        , Parser.chompWhile isUninterestingToRegex
+            |> Parser.getChompedString
+            |> Parser.andThen
+                (\str ->
+                    if String.isEmpty str then
+                        Parser.problem ExpectingClosingRegexSlash
+
+                    else
+                        Parser.succeed str
+                )
+            |> Parser.map (\str -> Parser.Loop (str :: revStrs))
+        ]
+
+
+isUninterestingToRegex : Char -> Bool
+isUninterestingToRegex char =
+    char /= '/'
 
 
 tagAndRuleVisibility : Parser ( String, RuleVisibility )

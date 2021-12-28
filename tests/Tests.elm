@@ -6,6 +6,7 @@ import Grammar exposing (Config, Error(..), Parser, Structure(..))
 import Grammar.Parser exposing (Problem(..))
 import Grammar.Strategy exposing (Strategy(..))
 import Parser exposing (Problem(..))
+import Regex
 import Test exposing (Test)
 
 
@@ -428,8 +429,7 @@ factor -> number | parenthesized
 
 <parenthesized> -> <"("> expr <")">
 
-number  -> digit+
-<digit> -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+number  -> /\\d+/
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
@@ -441,9 +441,7 @@ factor-op -> "*" | "/"
                                 [ Node "term"
                                     [ Node "factor"
                                         [ Node "number"
-                                            [ Terminal "4"
-                                            , Terminal "2"
-                                            ]
+                                            [ Terminal "42" ]
                                         ]
                                     ]
                                 , Node "term-op" [ Terminal "+" ]
@@ -563,11 +561,27 @@ factor-op -> "*" | "/"
                                 ]
                             )
                         )
+        , Test.test "regex" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> /\\d+/
+                    """
+                    |> Result.andThen (runOn "123")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "123" ]))
         ]
 
 
 grammarParsing : Test
 grammarParsing =
+    let
+        regex : String -> Strategy
+        regex content =
+            content
+                |> Regex.fromString
+                |> Maybe.withDefault Regex.never
+                |> Regex
+    in
     Test.describe "Grammar.Parser.parse"
         [ Test.test "simple terminal" <|
             \() ->
@@ -901,8 +915,7 @@ factor -> number | parenthesized
 
 <parenthesized> -> <"("> expr <")">
 
-number  -> digit+
-<digit> -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+number  -> /\\d+/
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
@@ -911,12 +924,7 @@ factor-op -> "*" | "/"
                         (Ok
                             { rules =
                                 Dict.fromList
-                                    [ ( "digit"
-                                      , ( Grammar.ruleHidden
-                                        , ( Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Alternation (Literal "0") (Literal "1")) (Literal "2")) (Literal "3")) (Literal "4")) (Literal "5")) (Literal "6")) (Literal "7")) (Literal "8")) (Literal "9"), [] )
-                                        )
-                                      )
-                                    , ( "expr"
+                                    [ ( "expr"
                                       , ( Grammar.ruleVisible
                                         , ( Concatenation (Tag "term") (ZeroOrMore (Concatenation (Tag "term-op") (Tag "term"))), [] )
                                         )
@@ -933,7 +941,7 @@ factor-op -> "*" | "/"
                                       )
                                     , ( "number"
                                       , ( Grammar.ruleVisible
-                                        , ( OneOrMore (Tag "digit"), [] )
+                                        , ( regex "\\d+", [] )
                                         )
                                       )
                                     , ( "parenthesized"
@@ -994,6 +1002,25 @@ factor-op -> "*" | "/"
                                     , ( "greeting"
                                       , ( Grammar.ruleHidden
                                         , ( Alternation (Alternation (Literal "hello") (Literal "hi there")) (Literal "greetings"), [] )
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "regex" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    example -> /\\d+/
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "example"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "example"
+                                      , ( Grammar.ruleVisible
+                                        , ( regex "\\d+", [] )
                                         )
                                       )
                                     ]
