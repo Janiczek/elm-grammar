@@ -815,6 +815,29 @@ grammarParsing =
                                     ]
                             }
                         )
+        , Test.test ", is ignored" <|
+            \() ->
+                Grammar.Parser.parse
+                    """
+                    example -> "hello", "world"
+                    """
+                    |> Expect.equal
+                        (Ok
+                            { start = "example"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "example"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation
+                                                (Literal "hello")
+                                                (Literal "world")
+                                          , []
+                                          )
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
         , Test.test "concatenation and alternation are grouped correctly" <|
             \() ->
                 Grammar.Parser.parse

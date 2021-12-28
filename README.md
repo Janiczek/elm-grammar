@@ -39,6 +39,7 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 * TODO: mention that ; also serves as a line comment
 * TODO: mention -- line comments
 * TODO: mention / as alternative syntax for |
+* TODO: mention , as whitespace (ignored character)
 
 ### Implemented:
 

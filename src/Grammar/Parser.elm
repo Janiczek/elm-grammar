@@ -68,18 +68,18 @@ parse string =
 parser : Parser Grammar
 parser =
     Parser.succeed Internal.fromNonemptyRules
-        |. spacesOrMultiComment { allowNewlines = True }
+        |. whitespaceOrMultiComment { allowNewlines = True }
         |= (Parser.sequence
                 { start = empty
                 , separator = Parser.Token "\n" ExpectingNewline
                 , end = empty
-                , spaces = spacesOrMultiComment { allowNewlines = False }
+                , spaces = whitespaceOrMultiComment { allowNewlines = False }
                 , item = rule
                 , trailing = Parser.Optional
                 }
                 |> Parser.andThen (NonemptyList.fromList >> Parser.fromMaybe RuleListWasEmpty)
            )
-        |. spacesOrMultiComment { allowNewlines = True }
+        |. whitespaceOrMultiComment { allowNewlines = True }
 
 
 empty : Parser.Token Problem
@@ -87,16 +87,16 @@ empty =
     Parser.Token "" ShouldntHappen
 
 
-spacesOrMultiComment : { allowNewlines : Bool } -> Parser ()
-spacesOrMultiComment { allowNewlines } =
+whitespaceOrMultiComment : { allowNewlines : Bool } -> Parser ()
+whitespaceOrMultiComment { allowNewlines } =
     let
         chompFn : Char -> Bool
         chompFn =
             if allowNewlines then
-                \c -> c == ' ' || c == '\t' || c == '\n'
+                \c -> c == ' ' || c == '\t' || c == ',' || c == '\n'
 
             else
-                \c -> c == ' ' || c == '\t'
+                \c -> c == ' ' || c == '\t' || c == ','
     in
     Parser.loop () <|
         \() ->
@@ -142,11 +142,11 @@ rule =
         (\( tag_, ruleVisibility ) strategy_ ->
             ( tag_, ( ruleVisibility, strategy_ ) )
         )
-        |. spacesOrMultiComment { allowNewlines = True }
+        |. whitespaceOrMultiComment { allowNewlines = True }
         |= tagAndRuleVisibility
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |. arrowLike
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |= strategy
         |. lineComment
         |> Parser.inContext InRule
@@ -186,12 +186,12 @@ strategy =
             ]
         , andThenOneOf =
             [ Pratt.infixLeft 1 alternationToken Alternation
-            , Pratt.infixLeft 2 (spacesOrMultiComment { allowNewlines = False }) Concatenation
+            , Pratt.infixLeft 2 (whitespaceOrMultiComment { allowNewlines = False }) Concatenation
             , Pratt.postfix 4 (Parser.token (Parser.Token "+" ExpectingPlusSign)) OneOrMore
             , Pratt.postfix 5 (Parser.token (Parser.Token "*" ExpectingAsterisk)) ZeroOrMore
             , Pratt.postfix 6 (Parser.token (Parser.Token "?" ExpectingQuestionMark)) Optional
             ]
-        , spaces = spacesOrMultiComment { allowNewlines = False }
+        , spaces = whitespaceOrMultiComment { allowNewlines = False }
         }
         |> Parser.inContext InStrategy
 
@@ -208,9 +208,9 @@ hidden : Pratt.Config Context Problem Strategy -> Parser Strategy
 hidden config =
     Parser.succeed Hidden
         |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         |> Parser.inContext InHidden
 
@@ -219,9 +219,9 @@ grouped : Pratt.Config Context Problem Strategy -> Parser Strategy
 grouped config =
     Parser.succeed identity
         |. Parser.token (Parser.Token "(" ExpectingLeftParenthesis)
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |= Pratt.subExpression 0 config
-        |. spacesOrMultiComment { allowNewlines = False }
+        |. whitespaceOrMultiComment { allowNewlines = False }
         |. Parser.token (Parser.Token ")" ExpectingRightParenthesis)
         |> Parser.inContext InGrouped
 
@@ -298,9 +298,9 @@ tagAndRuleVisibility =
             |= tag
         , Parser.succeed (\tag_ -> ( tag_, RuleHidden ))
             |. Parser.token (Parser.Token "<" ExpectingLeftAngleBracket)
-            |. spacesOrMultiComment { allowNewlines = False }
+            |. whitespaceOrMultiComment { allowNewlines = False }
             |= tag
-            |. spacesOrMultiComment { allowNewlines = False }
+            |. whitespaceOrMultiComment { allowNewlines = False }
             |. Parser.token (Parser.Token ">" ExpectingRightAngleBracket)
         ]
         |> Parser.inContext InTagAndRuleVisibility
