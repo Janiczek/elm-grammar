@@ -636,6 +636,14 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "abc123")
                     |> Expect.err
+        , Test.test "regex escaping of \\" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> /a\\/b/
+                    """
+                    |> Result.andThen (runOn "a/b")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "a/b" ]))
         , Test.test "::= is a synonym for ->" <|
             \() ->
                 Grammar.fromString

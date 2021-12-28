@@ -59,6 +59,8 @@ type Problem
     | ExpectingClosingRegexSlash
     | ExpectingSemicolon
     | ExpectingDoubleDash
+    | ExpectingSlash
+    | ExpectingBackslash
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -262,7 +264,7 @@ isUninterestingToLiteral char =
 
 regex : Parser Regex
 regex =
-    Parser.succeed (\regex_ -> Regex.fromString ("^" ++ regex_))
+    Parser.succeed (\regex_ -> Regex.fromString ("^" ++ Debug.log "regex" regex_))
         |. Parser.token (Parser.Token "/" ExpectingOpeningRegexSlash)
         |= Parser.loop [] regexHelp
         |> Parser.andThen (Parser.fromMaybe ExpectingValidRegex)
@@ -272,7 +274,15 @@ regex =
 regexHelp : List String -> Parser (Parser.Step (List String) String)
 regexHelp revStrs =
     Parser.oneOf
-        [ Parser.token (Parser.Token "/" ExpectingClosingRegexSlash)
+        [ Parser.succeed identity
+            |. Parser.token (Parser.Token "\\" ExpectingBackslash)
+            |= Parser.oneOf
+                [ -- this makes sure we don't interpret the next `/` as ending the regex
+                  Parser.succeed (Parser.Loop ("\\/" :: revStrs))
+                    |. Parser.token (Parser.Token "/" ExpectingSlash)
+                , Parser.succeed (Parser.Loop ("\\" :: revStrs))
+                ]
+        , Parser.token (Parser.Token "/" ExpectingClosingRegexSlash)
             |> Parser.map (\_ -> Parser.Done (String.join "" (List.reverse revStrs)))
         , Parser.chompWhile isUninterestingToRegex
             |> Parser.getChompedString
@@ -290,7 +300,7 @@ regexHelp revStrs =
 
 isUninterestingToRegex : Char -> Bool
 isUninterestingToRegex char =
-    char /= '/'
+    char /= '/' && char /= '\\'
 
 
 tagAndRuleVisibility : Parser ( String, RuleVisibility )
