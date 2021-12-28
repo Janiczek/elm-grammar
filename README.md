@@ -34,6 +34,8 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 * TODO: mention that it's enough to only hide one tag to hide all its occurences
 * TODO: mention that the starting tag cannot be hidden
 
+* TODO: mention the ::= synonym for ->
+
 ### Implemented:
 
 ```

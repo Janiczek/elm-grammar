@@ -39,6 +39,7 @@ type Problem
     | ExpectingRightParenthesis
     | ExpectingPipe
     | ExpectingArrow
+    | ExpectingColonColonEquals
     | ExpectingNewline
     | ExpectingLiteral String
     | ExpectingPlusSign
@@ -141,10 +142,18 @@ rule =
         |. spacesOrComment { allowNewlines = True }
         |= tagAndRuleVisibility
         |. spacesOrComment { allowNewlines = False }
-        |. Parser.token (Parser.Token "->" ExpectingArrow)
+        |. arrowLike
         |. spacesOrComment { allowNewlines = False }
         |= strategy
         |> Parser.inContext InRule
+
+
+arrowLike : Parser ()
+arrowLike =
+    Parser.oneOf
+        [ Parser.token (Parser.Token "->" ExpectingArrow)
+        , Parser.token (Parser.Token "::=" ExpectingColonColonEquals)
+        ]
 
 
 strategy : Parser Strategy

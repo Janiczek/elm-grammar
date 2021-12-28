@@ -429,7 +429,7 @@ factor -> number | parenthesized
 
 <parenthesized> -> <"("> expr <")">
 
-number  -> /\\d+/
+number -> /\\d+/
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
@@ -438,12 +438,7 @@ factor-op -> "*" | "/"
                     |> Expect.equal
                         (Ok
                             (Node "expr"
-                                [ Node "term"
-                                    [ Node "factor"
-                                        [ Node "number"
-                                            [ Terminal "42" ]
-                                        ]
-                                    ]
+                                [ Node "term" [ Node "factor" [ Node "number" [ Terminal "42" ] ] ]
                                 , Node "term-op" [ Terminal "+" ]
                                 , Node "term"
                                     [ Node "factor" [ Node "number" [ Terminal "5" ] ]
@@ -461,6 +456,23 @@ factor-op -> "*" | "/"
                                 ]
                             )
                         )
+        , Test.test "Different arithmetic example" <|
+            \() ->
+                Grammar.fromString
+                    """
+expr -> add | sub | mul | div | bottom
+
+<bottom> -> number | parenthesized
+<number> -> /\\d+/
+<parenthesized> -> <"("> expr <")">
+
+add -> bottom <"+"> bottom
+sub -> bottom <"-"> bottom
+mul -> bottom <"*"> bottom
+div -> bottom <"/"> bottom
+                    """
+                    |> Result.andThen (runOn "42+5*(2-6)/3")
+                    |> Expect.equal (Ok (Terminal "TODO"))
         , Test.test "comment before tag" <|
             \() ->
                 Grammar.fromString
@@ -577,6 +589,14 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "abc123")
                     |> Expect.err
+        , Test.test "::= is a synonym for ->" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example ::= "world"
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
         ]
 
 
@@ -923,7 +943,7 @@ factor -> number | parenthesized
 
 <parenthesized> -> <"("> expr <")">
 
-number  -> /\\d+/
+number -> /\\d+/
 
 term-op   -> "-" | "+"
 factor-op -> "*" | "/"
