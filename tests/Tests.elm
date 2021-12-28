@@ -644,6 +644,14 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "world")
                     |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "= is a synonym for ->" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example = "world"
+                    """
+                    |> Result.andThen (runOn "world")
+                    |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
         , Test.test "rules can be optionally ended with ;" <|
             \() ->
                 Grammar.fromString

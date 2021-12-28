@@ -41,6 +41,7 @@ type Problem
     | ExpectingSolidus
     | ExpectingArrow
     | ExpectingColonColonEquals
+    | ExpectingEquals
     | ExpectingNewline
     | ExpectingLiteral String
     | ExpectingPlusSign
@@ -170,6 +171,7 @@ arrowLike =
     Parser.oneOf
         [ Parser.token (Parser.Token "->" ExpectingArrow)
         , Parser.token (Parser.Token "::=" ExpectingColonColonEquals)
+        , Parser.token (Parser.Token "=" ExpectingEquals)
         ]
 
 
