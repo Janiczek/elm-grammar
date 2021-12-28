@@ -35,6 +35,7 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 * TODO: mention that the starting tag cannot be hidden
 
 * TODO: mention the ::= synonym for ->
+* TODO: mention the ; optional ending character
 
 ### Implemented:
 

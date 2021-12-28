@@ -55,6 +55,7 @@ type Problem
     | ExpectingValidRegex
     | ExpectingOpeningRegexSlash
     | ExpectingClosingRegexSlash
+    | ExpectingSemicolon
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -145,6 +146,7 @@ rule =
         |. arrowLike
         |. spacesOrComment { allowNewlines = False }
         |= strategy
+        |. Parser.many (Parser.token (Parser.Token ";" ExpectingSemicolon))
         |> Parser.inContext InRule
 
 

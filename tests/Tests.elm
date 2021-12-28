@@ -597,6 +597,22 @@ div -> bottom <"/"> bottom
                     """
                     |> Result.andThen (runOn "world")
                     |> Expect.equal (Ok (Node "example" [ Terminal "world" ]))
+        , Test.test "rules can be optionally ended with ;" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> another "world";
+                    another -> "hello";
+                    """
+                    |> Result.andThen (runOn "helloworld")
+                    |> Expect.equal
+                        (Ok
+                            (Node "example"
+                                [ Node "another" [ Terminal "hello" ]
+                                , Terminal "world"
+                                ]
+                            )
+                        )
         ]
 
 
