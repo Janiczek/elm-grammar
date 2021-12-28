@@ -569,6 +569,14 @@ factor-op -> "*" | "/"
                     """
                     |> Result.andThen (runOn "123")
                     |> Expect.equal (Ok (Node "example" [ Terminal "123" ]))
+        , Test.test "regex is left-anchored with ^ implicitly" <|
+            \() ->
+                Grammar.fromString
+                    """
+                    example -> /\\d+/
+                    """
+                    |> Result.andThen (runOn "abc123")
+                    |> Expect.err
         ]
 
 
