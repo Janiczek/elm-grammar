@@ -61,6 +61,7 @@ type Problem
     | ExpectingDoubleDash
     | ExpectingSlash
     | ExpectingBackslash
+    | ExpectingEOF
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) Grammar
@@ -184,6 +185,7 @@ strategy =
             [ hidden
             , grouped
             , Pratt.prefix 3 (Parser.token (Parser.Token "&" ExpectingAmpersand)) Lookahead
+            , Pratt.literal <| Parser.map (\_ -> EOF) (Parser.token (Parser.Token "EOF" ExpectingEOF))
             , Pratt.literal <| Parser.map Literal literal
             , Pratt.literal <| Parser.map Tag tag
             , Pratt.literal <| Parser.map Regex regex

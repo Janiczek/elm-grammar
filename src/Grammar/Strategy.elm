@@ -25,6 +25,7 @@ import Regex exposing (Regex)
      - ZeroOrMore:    a*
      - OneOrMore:     a+
      - Lookahead:     &a
+     - EOF:           EOF
 
 Parts of the syntax that don't show up as a Strategy constructor:
 
@@ -44,3 +45,4 @@ type Strategy
     | ZeroOrMore Strategy
     | OneOrMore Strategy
     | Lookahead Strategy
+    | EOF

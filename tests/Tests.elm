@@ -676,6 +676,18 @@ factor-op -> "*" | "/"
                                 ]
                             )
                         )
+        , Test.test "EOF pass" <|
+            \() ->
+                Grammar.fromString
+                    """s -> "a" EOF"""
+                    |> Result.andThen (runOn "a")
+                    |> Expect.equal (Ok (Node "s" [ Terminal "a" ]))
+        , Test.test "EOF fail" <|
+            \() ->
+                Grammar.fromString
+                    """s -> "a" EOF"""
+                    |> Result.andThen (runOn "aa")
+                    |> Expect.err
         ]
 
 
@@ -1174,6 +1186,23 @@ factor-op -> "*" | "/"
                                     [ ( "example"
                                       , ( Grammar.ruleVisible
                                         , ( regex "\\d+", [] )
+                                        )
+                                      )
+                                    ]
+                            }
+                        )
+        , Test.test "EOF" <|
+            \() ->
+                Grammar.Parser.parse
+                    """s -> "a" EOF"""
+                    |> Expect.equal
+                        (Ok
+                            { start = "s"
+                            , rules =
+                                Dict.fromList
+                                    [ ( "s"
+                                      , ( Grammar.ruleVisible
+                                        , ( Concatenation (Literal "a") EOF, [] )
                                         )
                                       )
                                     ]

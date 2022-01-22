@@ -58,4 +58,5 @@ on "bar", don't show the "foo" tag, but when running it on "baz", show the "foo"
 - Lookahead:     s  -> &a
 - Comment:       s  -> (* hello *) "world"
 - Hiding tags:  <s> -> "abc"
+- EOF:           s  -> EOF
 ```

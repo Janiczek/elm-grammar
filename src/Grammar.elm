@@ -320,6 +320,10 @@ strategyParser rules strategy =
                 |= Parser.getSource
                 |> Parser.andThen identity
 
+        EOF ->
+            Parser.succeed []
+                |. Parser.end ExpectingEOF
+
 
 graphStyles : Graph.DOT.Styles
 graphStyles =
