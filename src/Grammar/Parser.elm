@@ -266,7 +266,7 @@ isUninterestingToLiteral char =
 
 regex : Parser Regex
 regex =
-    Parser.succeed (\regex_ -> Regex.fromString ("^" ++ Debug.log "regex" regex_))
+    Parser.succeed (\regex_ -> Regex.fromString ("^" ++ regex_))
         |. Parser.token (Parser.Token "/" ExpectingOpeningRegexSlash)
         |= Parser.loop [] regexHelp
         |> Parser.andThen (Parser.fromMaybe ExpectingValidRegex)
